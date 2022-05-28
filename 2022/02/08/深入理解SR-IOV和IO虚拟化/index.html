@@ -19,18 +19,18 @@
     <meta name="description" content="SR-IOV（Single Root I&#x2F;O Virtualization）是由PCI-SIG组织定义的PCIe规范的扩展规范《Single Root I&#x2F;O Virtualization and Sharing Specification》">
 <meta property="og:type" content="article">
 <meta property="og:title" content="深入理解SR-IOV和IO虚拟化">
-<meta property="og:url" content="http://example.com/2022/02/08/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3SR-IOV%E5%92%8CIO%E8%99%9A%E6%8B%9F%E5%8C%96/index.html">
+<meta property="og:url" content="https://leo-hou.github.io/2022/02/08/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3SR-IOV%E5%92%8CIO%E8%99%9A%E6%8B%9F%E5%8C%96/index.html">
 <meta property="og:site_name" content="Leo Hou">
 <meta property="og:description" content="SR-IOV（Single Root I&#x2F;O Virtualization）是由PCI-SIG组织定义的PCIe规范的扩展规范《Single Root I&#x2F;O Virtualization and Sharing Specification》">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="http://example.com/img/post/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3SR-IOV%E5%92%8CIO%E8%99%9A%E6%8B%9F%E5%8C%96/sriov.png">
+<meta property="og:image" content="https://leo-hou.github.io/img/post/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3SR-IOV%E5%92%8CIO%E8%99%9A%E6%8B%9F%E5%8C%96/sriov.png">
 <meta property="article:published_time" content="2022-02-08T11:47:17.000Z">
 <meta property="article:modified_time" content="2022-05-28T11:14:15.000Z">
 <meta property="article:author" content="Leo Hou">
 <meta property="article:tag" content="SR-IOV">
 <meta property="article:tag" content="IO Virtualization">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="http://example.com/img/post/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3SR-IOV%E5%92%8CIO%E8%99%9A%E6%8B%9F%E5%8C%96/sriov.png">
+<meta name="twitter:image" content="https://leo-hou.github.io/img/post/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3SR-IOV%E5%92%8CIO%E8%99%9A%E6%8B%9F%E5%8C%96/sriov.png">
   
   
     <meta name="referrer" content="no-referrer-when-downgrade">
@@ -74,7 +74,7 @@
   <script id="fluid-configs">
     var Fluid = window.Fluid || {};
     Fluid.ctx = Object.assign({}, Fluid.ctx)
-    var CONFIG = {"hostname":"example.com","root":"/","version":"1.9.0","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+    var CONFIG = {"hostname":"leo-hou.github.io","root":"/","version":"1.9.0","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
 
     if (CONFIG.web_analytics.follow_dnt) {
       var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
@@ -456,7 +456,7 @@ QEMU中PCI设备直通时vfio-pci注册流程见图3.1.3.1：</div>
   <div class="license-box my-3">
     <div class="license-title">
       <div>深入理解SR-IOV和IO虚拟化</div>
-      <div>http://example.com/2022/02/08/深入理解SR-IOV和IO虚拟化/</div>
+      <div>https://leo-hou.github.io/2022/02/08/深入理解SR-IOV和IO虚拟化/</div>
     </div>
     <div class="license-meta">
       
@@ -478,9 +478,21 @@ QEMU中PCI设备直通时vfio-pci注册流程见图3.1.3.1：</div>
           
             
             
-              <a target="_blank" href="https://creativecommons.org/licenses/by/4.0/">
+              <a target="_blank" href="https://creativecommons.org/licenses/by-nc-nd/4.0/">
               <span class="hint--top hint--rounded" aria-label="BY - 署名">
                 <i class="iconfont icon-by"></i>
+              </span>
+              </a>
+            
+              <a target="_blank" href="https://creativecommons.org/licenses/by-nc-nd/4.0/">
+              <span class="hint--top hint--rounded" aria-label="NC - 非商业性使用">
+                <i class="iconfont icon-nc"></i>
+              </span>
+              </a>
+            
+              <a target="_blank" href="https://creativecommons.org/licenses/by-nc-nd/4.0/">
+              <span class="hint--top hint--rounded" aria-label="ND - 禁止演绎">
+                <i class="iconfont icon-nd"></i>
               </span>
               </a>
             

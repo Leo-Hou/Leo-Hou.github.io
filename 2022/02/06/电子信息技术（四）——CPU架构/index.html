@@ -19,17 +19,17 @@
     <meta name="description" content="上一节聊到了数字电路，那大规模集成的数字电路的巅峰便是：CPU（中央处理器）。本节就聊一下CPU的基本架构和当前最广泛应用的两种处理器架构x86架构和ARM架构。">
 <meta property="og:type" content="article">
 <meta property="og:title" content="电子信息技术（四）——CPU架构">
-<meta property="og:url" content="http://example.com/2022/02/06/%E7%94%B5%E5%AD%90%E4%BF%A1%E6%81%AF%E6%8A%80%E6%9C%AF%EF%BC%88%E5%9B%9B%EF%BC%89%E2%80%94%E2%80%94CPU%E6%9E%B6%E6%9E%84/index.html">
+<meta property="og:url" content="https://leo-hou.github.io/2022/02/06/%E7%94%B5%E5%AD%90%E4%BF%A1%E6%81%AF%E6%8A%80%E6%9C%AF%EF%BC%88%E5%9B%9B%EF%BC%89%E2%80%94%E2%80%94CPU%E6%9E%B6%E6%9E%84/index.html">
 <meta property="og:site_name" content="Leo Hou">
 <meta property="og:description" content="上一节聊到了数字电路，那大规模集成的数字电路的巅峰便是：CPU（中央处理器）。本节就聊一下CPU的基本架构和当前最广泛应用的两种处理器架构x86架构和ARM架构。">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="http://example.com/img/post/cpu/cpu.png">
+<meta property="og:image" content="https://leo-hou.github.io/img/post/cpu/cpu.png">
 <meta property="article:published_time" content="2022-02-06T05:26:47.000Z">
 <meta property="article:modified_time" content="2022-05-28T11:14:15.000Z">
 <meta property="article:author" content="Leo Hou">
 <meta property="article:tag" content="CPU架构">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="http://example.com/img/post/cpu/cpu.png">
+<meta name="twitter:image" content="https://leo-hou.github.io/img/post/cpu/cpu.png">
   
   
     <meta name="referrer" content="no-referrer-when-downgrade">
@@ -73,7 +73,7 @@
   <script id="fluid-configs">
     var Fluid = window.Fluid || {};
     Fluid.ctx = Object.assign({}, Fluid.ctx)
-    var CONFIG = {"hostname":"example.com","root":"/","version":"1.9.0","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+    var CONFIG = {"hostname":"leo-hou.github.io","root":"/","version":"1.9.0","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
 
     if (CONFIG.web_analytics.follow_dnt) {
       var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
@@ -360,7 +360,7 @@ ARM属于精简指令集架构，在嵌入式领域已是绝对霸主，其指�
   <div class="license-box my-3">
     <div class="license-title">
       <div>电子信息技术（四）——CPU架构</div>
-      <div>http://example.com/2022/02/06/电子信息技术（四）——CPU架构/</div>
+      <div>https://leo-hou.github.io/2022/02/06/电子信息技术（四）——CPU架构/</div>
     </div>
     <div class="license-meta">
       
@@ -382,9 +382,21 @@ ARM属于精简指令集架构，在嵌入式领域已是绝对霸主，其指�
           
             
             
-              <a target="_blank" href="https://creativecommons.org/licenses/by/4.0/">
+              <a target="_blank" href="https://creativecommons.org/licenses/by-nc-nd/4.0/">
               <span class="hint--top hint--rounded" aria-label="BY - 署名">
                 <i class="iconfont icon-by"></i>
+              </span>
+              </a>
+            
+              <a target="_blank" href="https://creativecommons.org/licenses/by-nc-nd/4.0/">
+              <span class="hint--top hint--rounded" aria-label="NC - 非商业性使用">
+                <i class="iconfont icon-nc"></i>
+              </span>
+              </a>
+            
+              <a target="_blank" href="https://creativecommons.org/licenses/by-nc-nd/4.0/">
+              <span class="hint--top hint--rounded" aria-label="ND - 禁止演绎">
+                <i class="iconfont icon-nd"></i>
               </span>
               </a>
             
