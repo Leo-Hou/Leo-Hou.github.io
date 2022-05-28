@@ -1,0 +1,807 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/favicon.png">
+  <link rel="icon" href="/img/favicon.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="Leo Hou">
+  <meta name="keywords" content="">
+  
+    <meta name="description" content="字符设备：字符设备是指在I&#x2F;O传输过程中以字符为单位进行传输的设备，是面向流的设备，常见的字符设备有鼠标、键盘、串口、控制台和LED等。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux字符设备驱动">
+<meta property="og:url" content="http://example.com/2022/03/20/Linux%E5%AD%97%E7%AC%A6%E8%AE%BE%E5%A4%87%E9%A9%B1%E5%8A%A8/index.html">
+<meta property="og:site_name" content="Leo Hou">
+<meta property="og:description" content="字符设备：字符设备是指在I&#x2F;O传输过程中以字符为单位进行传输的设备，是面向流的设备，常见的字符设备有鼠标、键盘、串口、控制台和LED等。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/img/post/linux%E9%A9%B1%E5%8A%A8/char.png">
+<meta property="article:published_time" content="2022-03-20T08:47:05.000Z">
+<meta property="article:modified_time" content="2022-05-28T11:14:15.000Z">
+<meta property="article:author" content="Leo Hou">
+<meta property="article:tag" content="字符设备">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="http://example.com/img/post/linux%E9%A9%B1%E5%8A%A8/char.png">
+  
+  
+    <meta name="referrer" content="no-referrer-when-downgrade">
+  
+  
+  <title>Linux字符设备驱动 - Leo Hou</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"example.com","root":"/","version":"1.9.0","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+
+  
+<meta name="generator" content="Hexo 6.2.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Leo Hou</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                首页
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                归档
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                分类
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/tags/">
+                <i class="iconfont icon-tags-fill"></i>
+                标签
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                关于
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              &nbsp;<i class="iconfont icon-search"></i>&nbsp;
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">&nbsp;<i
+                class="iconfont icon-dark" id="color-toggle-icon"></i>&nbsp;</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="Linux字符设备驱动"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2022-03-20 16:47" pubdate>
+          2022年3月20日 下午
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          <!-- compatible with older versions-->
+          4.1k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          <!-- compatible with older versions-->
+          35 分钟
+        
+      </span>
+    
+
+    
+    
+      
+        <span id="busuanzi_container_page_pv" style="display: none">
+          <i class="iconfont icon-eye" aria-hidden="true"></i>
+          <span id="busuanzi_value_page_pv"></span> 次
+        </span>
+        
+      
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">Linux字符设备驱动</h1>
+            
+            <div class="markdown-body">
+              
+              <h1 id="一、字符设备"><a href="#一、字符设备" class="headerlink" title="一、字符设备"></a>一、字符设备</h1><div class="markdown-body">
+&emsp;&emsp;字符设备是指在I/O传输过程中以字符为单位进行传输的设备，是面向流的设备，常见的字符设备有鼠标、键盘、串口、控制台和LED等。</br>
+&emsp;&emsp;字符设备会在linux系统的/dev目录下对应一个设备文件。字符设备可以使用与普通文件相同的文件操作命令对字符设备文件进行操作，例如打开、关闭、读、写等。</div>
+
+<h1 id="二、字符设备驱动模型"><a href="#二、字符设备驱动模型" class="headerlink" title="二、字符设备驱动模型"></a>二、字符设备驱动模型</h1><div class="markdown-body">
+&emsp;&emsp;Linux系统下字符设备驱动主要有2部分：用户态设备文件和内核态驱动中文件操作函数（见图2.1）。用户态的进程想和硬件设备交互时，首先要通过系统调用操作（read()、write()、ioctl()等）字符设备文件，字符设备驱动然后调用file_operations 中注册的操作函数和硬件交互。</div>
+
+<h4 id=""><a href="#" class="headerlink" title=""></a></h4><p><img src="/2022/03/20/Linux%E5%AD%97%E7%AC%A6%E8%AE%BE%E5%A4%87%E9%A9%B1%E5%8A%A8/%E5%9B%BE2.1.png" srcset="/img/loading.gif" lazyload alt="图2.1">
+ </p>
+<h1 id="三、字符设备驱动构建"><a href="#三、字符设备驱动构建" class="headerlink" title="三、字符设备驱动构建"></a>三、字符设备驱动构建</h1><div class="markdown-body">
+&emsp;&emsp;Linux系统下构建字符设备驱动主要有部分要实现：驱动初始化、设备操作、驱动注销（见图3.1)。</br>
+a. 驱动初始化：</br>
+需要完成cdev的分配、cdev初始化、注册cdev及硬件设备初始化。</br>
+b. 设备操作：</br>
+需要填充 struct file_operations 结构体中断的操作函数，实现 struct file_operations 结构体中</br>
+的read()、write()和ioctl()等函数是驱动设计的主体工作。</br>
+c. 驱动注销：<br>
+即释放设备号、删除、注销cdev。</div>
+
+<h4 id="-1"><a href="#-1" class="headerlink" title=""></a></h4><p><img src="/2022/03/20/Linux%E5%AD%97%E7%AC%A6%E8%AE%BE%E5%A4%87%E9%A9%B1%E5%8A%A8/%E5%9B%BE3.1.png" srcset="/img/loading.gif" lazyload alt="图3.1">
+ </p>
+<h2 id="3-1-struct-cdev"><a href="#3-1-struct-cdev" class="headerlink" title="3.1 struct cdev"></a>3.1 struct cdev</h2><p>&lt;include&#x2F;linux&#x2F;cdev.h&gt; </p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><code class="hljs c"><span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">cdev</span> &#123;</span>   <br>　　<span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">kobject</span> <span class="hljs-title">kobj</span>;</span>                  <span class="hljs-comment">//内嵌的内核对象.  </span><br>　　<span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">module</span> *<span class="hljs-title">owner</span>;</span>                 <span class="hljs-comment">//该字符设备所在的内核模块（所有者）的对象指针，一般为THIS_MODULE主要用于模块计数  </span><br>　　<span class="hljs-type">const</span> <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">file_operations</span> *<span class="hljs-title">ops</span>;</span>    <span class="hljs-comment">//该结构描述了字符设备所能实现的操作集（打开、关闭、读/写、...），是极为关键的一个结构体</span><br>　　<span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">list_head</span> <span class="hljs-title">list</span>;</span>                <span class="hljs-comment">//用来将已经向内核注册的所有字符设备形成链表</span><br>　　<span class="hljs-type">dev_t</span> dev;                            <span class="hljs-comment">//字符设备的设备号，由主设备号和次设备号构成（如果是一次申请多个设备号，此设备号为第一个）</span><br>　　<span class="hljs-type">unsigned</span> <span class="hljs-type">int</span> count;                   <span class="hljs-comment">//隶属于同一主设备号的次设备号的个数</span><br>　　...<br>&#125;;  <br></code></pre></td></tr></table></figure>
+
+<h2 id="3-2-cdev初始化"><a href="#3-2-cdev初始化" class="headerlink" title="3.2 cdev初始化"></a>3.2 cdev初始化</h2><div class="markdown-body">
+&emsp;&emsp;对于struct cdev，内核在头文件linux/cdev.h中提供了相应操作接口：</div>
+
+<h3 id="3-2-1-为cdev分配内存"><a href="#3-2-1-为cdev分配内存" class="headerlink" title="3.2.1 为cdev分配内存"></a>3.2.1 为cdev分配内存</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs c"><span class="hljs-keyword">struct</span> cdev *<span class="hljs-title function_">cdev_alloc</span><span class="hljs-params">(<span class="hljs-type">void</span>)</span>;　　<br><span class="hljs-comment">/* 返回值：</span><br><span class="hljs-comment">　　　　成功 cdev 对象首地址</span><br><span class="hljs-comment">　　　　失败：NULL */</span><br></code></pre></td></tr></table></figure>
+
+<h3 id="3-2-2-初始化cdev"><a href="#3-2-2-初始化cdev" class="headerlink" title="3.2.2 初始化cdev"></a>3.2.2 初始化cdev</h3><div class="markdown-body">
+&emsp;&emsp;初始化cdev的成员变量，并建立cdev和file_operations之间的关联。
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs c"><span class="hljs-type">void</span> <span class="hljs-title function_">cdev_init</span><span class="hljs-params">(<span class="hljs-keyword">struct</span> cdev *p, <span class="hljs-type">const</span> <span class="hljs-keyword">struct</span> file_operations *p)</span>;　　<br><span class="hljs-comment">/* 参数：</span><br><span class="hljs-comment">　　　　struct cdev *p - 被初始化的 cdev对象</span><br><span class="hljs-comment">　　　　const struct file_operations *fops - 字符设备操作方法集 */</span><br></code></pre></td></tr></table></figure>
+</div>　　
+
+<h3 id="3-2-3-注册cdev设备对象"><a href="#3-2-3-注册cdev设备对象" class="headerlink" title="3.2.3 注册cdev设备对象"></a>3.2.3 注册cdev设备对象</h3><div class="markdown-body">
+&emsp;&emsp;注册cdev设备对象，添加到系统字符设备列表中。</div>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><code class="hljs c"><span class="hljs-type">int</span> <span class="hljs-title function_">cdev_add</span><span class="hljs-params">(<span class="hljs-keyword">struct</span> cdev *p, <span class="hljs-type">dev_t</span> dev, <span class="hljs-type">unsigned</span> count)</span>;<br><span class="hljs-comment">/* 参数：</span><br><span class="hljs-comment">　　　　struct cdev *p - 被注册的cdev对象</span><br><span class="hljs-comment">　　　　dev_t dev - 设备的第一个设备号</span><br><span class="hljs-comment">　　　　unsigned - 这个设备连续的次设备号数量</span><br><span class="hljs-comment">   返回值：</span><br><span class="hljs-comment">　　　　成功：0</span><br><span class="hljs-comment">　　　　失败：负数（绝对值是错误码）*/</span><br></code></pre></td></tr></table></figure>
+
+<h3 id="3-2-4-设备号申请"><a href="#3-2-4-设备号申请" class="headerlink" title="3.2.4 设备号申请"></a>3.2.4 设备号申请</h3><div class="markdown-body">
+&emsp;&emsp;一个字符设备有一个主设备号和一个次设备号。主设备号用来标识与设备文件相连的驱动程序，用来反映设备类型。次设备号被驱动程序用来辨别操作的是哪个设备，用来区分同类型的设备。</br>
+&emsp;&emsp;linux内核中，设备号用dev_t来描述：
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs c"><span class="hljs-keyword">typedef</span> u_long <span class="hljs-type">dev_t</span>;　　<span class="hljs-comment">// 在32位机中是4个字节，高12位表示主设备号，低20位表示次设备号。 </span><br></code></pre></td></tr></table></figure>
+&emsp;&emsp;内核在头文件 linux/fs.h中提供了几个方便操作的宏定义来实现dev_t： </div>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs c"><span class="hljs-meta">#<span class="hljs-keyword">define</span> MAJOR(dev)    ((unsigned int) ((dev) &gt;&gt; MINORBITS))　　<span class="hljs-comment">// 从设备号中提取主设备号</span></span><br><span class="hljs-meta">#<span class="hljs-keyword">define</span> MINOR(dev)    ((unsigned int) ((dev) &amp; MINORMASK))　　<span class="hljs-comment">// 从设备号中提取次设备号</span></span><br><span class="hljs-meta">#<span class="hljs-keyword">define</span> MKDEV(ma,mi)    (((ma) <span class="hljs-string">&lt;&lt; MINORBITS) | (mi))&lt;/span&gt;</span>　　<span class="hljs-comment">// 将主、次设备号拼凑为设备号</span></span><br><span class="hljs-comment">/* 只是拼凑设备号,并未注册到系统中，若要使用需要竞态申请 */</span><br></code></pre></td></tr></table></figure>
+
+<h4 id="3-2-4-1-静态申请设备号"><a href="#3-2-4-1-静态申请设备号" class="headerlink" title="3.2.4.1 - 静态申请设备号"></a>3.2.4.1 - 静态申请设备号</h4><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><code class="hljs c"><span class="hljs-type">int</span> <span class="hljs-title function_">register_chrdev_region</span><span class="hljs-params">(<span class="hljs-type">dev_t</span> from, <span class="hljs-type">unsigned</span> count, <span class="hljs-type">const</span> <span class="hljs-type">char</span> *name)</span>;<br><span class="hljs-comment">/* 参数：</span><br><span class="hljs-comment">　　　　dev_t from - 要申请的设备号（起始）</span><br><span class="hljs-comment">　　　　unsigned count - 要申请的设备号数量</span><br><span class="hljs-comment">　　　　const char *name - 设备名</span><br><span class="hljs-comment">   返回值：</span><br><span class="hljs-comment">　　　　成功：0</span><br><span class="hljs-comment">　　　　失败：负数（绝对值是错误码）*/</span><br></code></pre></td></tr></table></figure>
+
+<h4 id="3-2-4-2-动态分配设备号"><a href="#3-2-4-2-动态分配设备号" class="headerlink" title="3.2.4.2 - 动态分配设备号"></a>3.2.4.2 - 动态分配设备号</h4><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><code class="hljs c"><span class="hljs-type">int</span> <span class="hljs-title function_">alloc_chrdev_region</span><span class="hljs-params">(<span class="hljs-type">dev_t</span> *dev, <span class="hljs-type">unsigned</span> baseminor, <span class="hljs-type">unsigned</span> count, <span class="hljs-type">const</span> <span class="hljs-type">char</span> *name)</span>;<br><span class="hljs-comment">/* 参数：</span><br><span class="hljs-comment">　　　　dev_t *dev - 用于保存分配到的第一个设备号（起始）</span><br><span class="hljs-comment">　　　　unsigned baseminor - 起始次设备号</span><br><span class="hljs-comment">　　　　unsigned count - 要分配设备号的数量</span><br><span class="hljs-comment">　　　　const char *name - 设备名</span><br><span class="hljs-comment">   返回值：</span><br><span class="hljs-comment">　　　　成功：0</span><br><span class="hljs-comment">　　　　失败：负数（绝对值是错误码）*/</span><br></code></pre></td></tr></table></figure>
+
+<h4 id="3-2-4-3-创建设备文件"><a href="#3-2-4-3-创建设备文件" class="headerlink" title="3.2.4.3 创建设备文件"></a>3.2.4.3 创建设备文件</h4><div class="markdown-body">
+&emsp;&emsp;利用cat /proc/devices查看申请到的设备名，设备号。</div>
+
+<h5 id="a-使用mknod手工创建："><a href="#a-使用mknod手工创建：" class="headerlink" title="a. 使用mknod手工创建："></a>a. 使用mknod手工创建：</h5><div class="markdown-body">
+&emsp;&emsp;mknod filename type major minor </div>
+
+<h5 id="b-自动创建设备节点"><a href="#b-自动创建设备节点" class="headerlink" title="b. 自动创建设备节点:"></a>b. 自动创建设备节点:</h5><div class="markdown-body">
+&emsp;&emsp;利用udev（mdev）来实现设备文件的自动创建，首先应保证支持udev（mdev），由busybox配置。在驱动初始化代码里调用class_create为该设备创建一个class，再为每个设备调用device_create创建对应的设备。
+</div> 
+
+<h2 id="3-3-file-operations-fops"><a href="#3-3-file-operations-fops" class="headerlink" title="3.3 file_operations *fops"></a>3.3 file_operations *fops</h2><div class="markdown-body">
+&emsp;&emsp;Linux下一切皆文件，字符设备也是抽象成设备文件，struct cdev 中的file_operations结构体中的成员函数是字符设备程序设计的主题内容，这些函数实际会在用户层程序进行Linux的open()、close()、write()、read()等系统调用时最终被调用。
+文件的操作接口结构：</div>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><code class="hljs c"><span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">file_operations</span> &#123;</span><br>　　<span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">module</span> *<span class="hljs-title">owner</span>;</span>　　<br>　　　　<span class="hljs-comment">/* 模块拥有者，一般为 THIS——MODULE */</span><br>　　<span class="hljs-type">ssize_t</span> (*read) (<span class="hljs-keyword">struct</span> file *, <span class="hljs-type">char</span> __user *, <span class="hljs-type">size_t</span>, <span class="hljs-type">loff_t</span> *);　　<br>　　　　<span class="hljs-comment">/* 从设备中读取数据，成功时返回读取的字节数，出错返回负值（绝对值是错误码） */</span><br>　　<span class="hljs-type">ssize_t</span> (*write) (<span class="hljs-keyword">struct</span> file *, <span class="hljs-type">const</span> <span class="hljs-type">char</span> __user *, <span class="hljs-type">size_t</span>, <span class="hljs-type">loff_t</span> *);　　　<br>　　　　<span class="hljs-comment">/* 向设备发送数据，成功时该函数返回写入字节数。若为被实现，用户调层用write()时系统将返回 -EINVAL*/</span><br>　　<span class="hljs-type">int</span> (*mmap) (<span class="hljs-keyword">struct</span> file *, <span class="hljs-keyword">struct</span> vm_area_struct *);　　<br>　　　　<span class="hljs-comment">/* 将设备内存映射内核空间进程内存中，若未实现，用户层调用 mmap()系统将返回 -ENODEV */</span><br>　　<span class="hljs-type">long</span> (*unlocked_ioctl)(<span class="hljs-keyword">struct</span> file *filp, <span class="hljs-type">unsigned</span> <span class="hljs-type">int</span> cmd, <span class="hljs-type">unsigned</span> <span class="hljs-type">long</span> arg);　　<br>　　　　<span class="hljs-comment">/* 提供设备相关控制命令（读写设备参数、状态，控制设备进行读写...）的实现，当调用成功时返回一个非负值 */</span><br>　　<span class="hljs-type">int</span> (*open) (<span class="hljs-keyword">struct</span> inode *, <span class="hljs-keyword">struct</span> file *);　　<br>　　　　<span class="hljs-comment">/* 打开设备 */</span><br>　　<span class="hljs-type">int</span> (*release) (<span class="hljs-keyword">struct</span> inode *, <span class="hljs-keyword">struct</span> file *);　　<br>　　　　<span class="hljs-comment">/* 关闭设备 */</span><br>　　<span class="hljs-type">int</span> (*flush) (<span class="hljs-keyword">struct</span> file *, <span class="hljs-type">fl_owner_t</span> id);　　<br>　　　　<span class="hljs-comment">/* 刷新设备 */</span><br>　　<span class="hljs-type">loff_t</span> (*llseek) (<span class="hljs-keyword">struct</span> file *, <span class="hljs-type">loff_t</span>, <span class="hljs-type">int</span>);　　<br>　　　　<span class="hljs-comment">/* 用来修改文件读写位置，并将新位置返回，出错时返回一个负值 */</span><br>　　<span class="hljs-type">int</span> (*fasync) (<span class="hljs-type">int</span>, <span class="hljs-keyword">struct</span> file *, <span class="hljs-type">int</span>);　　<br>　　　　<span class="hljs-comment">/* 通知设备 FASYNC 标志发生变化 */</span><br>　　<span class="hljs-type">unsigned</span> <span class="hljs-title function_">int</span> <span class="hljs-params">(*poll)</span> <span class="hljs-params">(<span class="hljs-keyword">struct</span> file *, <span class="hljs-keyword">struct</span> poll_table_struct *)</span>;　　<br>　　　　<span class="hljs-comment">/* POLL机制，用于询问设备是否可以被非阻塞地立即读写。当询问的条件未被触发时，用户空间进行select()和poll()系统调用将引起进程阻塞 */</span><br>　　...<br>&#125;;<br></code></pre></td></tr></table></figure>
+
+<h2 id="3-4-cdev注销"><a href="#3-4-cdev注销" class="headerlink" title="3.4 cdev注销"></a>3.4 cdev注销</h2><h3 id="3-4-1-释放设备号"><a href="#3-4-1-释放设备号" class="headerlink" title="3.4.1 释放设备号"></a>3.4.1 释放设备号</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs c"><span class="hljs-type">void</span> <span class="hljs-title function_">unregister_chrdev_region</span><span class="hljs-params">(<span class="hljs-type">dev_t</span> from, <span class="hljs-type">unsigned</span> count)</span>;<br><span class="hljs-comment">/* 参数：</span><br><span class="hljs-comment">　　　　dev_t from - 要释放的第一个设备号（起始）</span><br><span class="hljs-comment">　　　　unsigned count - 要释放的次设备号数量 */</span><br></code></pre></td></tr></table></figure>
+
+<h3 id="3-4-2-注销cdev"><a href="#3-4-2-注销cdev" class="headerlink" title="3.4.2 注销cdev"></a>3.4.2 注销cdev</h3><p>将cdev对象从系统中移除</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs c"><span class="hljs-type">void</span> <span class="hljs-title function_">cdev_del</span><span class="hljs-params">(<span class="hljs-keyword">struct</span> cdev *p)</span>;<br><span class="hljs-comment">/*参数：　</span><br><span class="hljs-comment">　　　　struct cdev *p - 要移除的cdev对象 */</span><br></code></pre></td></tr></table></figure>
+
+<h3 id="3-4-3-释放cdev内存"><a href="#3-4-3-释放cdev内存" class="headerlink" title="3.4.3 释放cdev内存"></a>3.4.3 释放cdev内存</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs c"><span class="hljs-type">void</span> <span class="hljs-title function_">cdev_put</span><span class="hljs-params">(<span class="hljs-keyword">struct</span> cdev *p)</span>;<br><span class="hljs-comment">/*参数：</span><br><span class="hljs-comment">　　　　struct cdev *p - 要移除的cdev对象 */</span><br></code></pre></td></tr></table></figure>
+
+              
+            </div>
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+    <div class="post-meta mr-3 d-flex align-items-center">
+      <i class="iconfont icon-category"></i>
+      
+
+<span class="category-chains">
+  
+  
+    
+      <span class="category-chain">
+        
+  <a href="/categories/Linux-Driver/" class="category-chain-item">Linux Driver</a>
+  
+  
+
+      </span>
+    
+  
+</span>
+
+    </div>
+  
+  
+    <div class="post-meta">
+      <i class="iconfont icon-tags"></i>
+      
+        <a href="/tags/%E5%AD%97%E7%AC%A6%E8%AE%BE%E5%A4%87/">#字符设备</a>
+      
+    </div>
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>Linux字符设备驱动</div>
+      <div>http://example.com/2022/03/20/Linux字符设备驱动/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>Leo Hou</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2022年3月20日</div>
+        </div>
+      
+      
+      <div class="license-meta-item">
+        <div>许可协议</div>
+        <div>
+          
+            
+            
+              <a target="_blank" href="https://creativecommons.org/licenses/by/4.0/">
+              <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                <i class="iconfont icon-by"></i>
+              </span>
+              </a>
+            
+          
+        </div>
+      </div>
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2022/03/13/QEMU-KVM%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%E4%B9%8B%E2%80%94%E2%80%94%E8%99%9A%E6%8B%9F%E6%9C%BA%E5%88%9B%E5%BB%BA%E6%B5%81%E7%A8%8B/" title="QEMU/KVM源码分析之——虚拟机创建流程">
+                        <span class="hidden-mobile">QEMU/KVM源码分析之——虚拟机创建流程</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+  <article id="comments" lazyload>
+    
+  <div id="valine"></div>
+  <script type="text/javascript">
+    Fluid.utils.loadComments('#valine', function() {
+      Fluid.utils.createScript('https://lib.baomitu.com/valine/1.4.16/Valine.min.js', function() {
+        var options = Object.assign(
+          {"appId":"Yy30t3g5sTxDH0jBsq4bNY50-gzGzoHsz","appKey":"qjelPlVKOfIeUMd1wva77E97","path":"window.location.pathname","placeholder":null,"avatar":"retro","meta":["nick","mail","link"],"requiredFields":[],"pageSize":10,"lang":"zh-CN","highlight":false,"recordIP":false,"serverURLs":"","emojiCDN":null,"emojiMaps":null,"enableQQ":false,"visitor":true},
+          {
+            el: "#valine",
+            path: window.location.pathname
+          }
+        )
+        new Valine(options);
+        Fluid.utils.waitElementVisible('#valine .vcontent', () => {
+          var imgSelector = '#valine .vcontent img:not(.vemoji)';
+          Fluid.plugins.imageCaption(imgSelector);
+          Fluid.plugins.fancyBox(imgSelector);
+        })
+      });
+    });
+  </script>
+  <noscript>Please enable JavaScript to view the comments</noscript>
+
+
+  </article>
+
+
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header"><i class="iconfont icon-list"></i>&nbsp;目录</p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+    <div class="statistics">
+  
+  
+
+  
+    
+      <span id="busuanzi_container_site_pv" style="display: none">
+        总访问量 
+        <span id="busuanzi_value_site_pv"></span>
+         次
+      </span>
+    
+    
+      <span id="busuanzi_container_site_uv" style="display: none">
+        总访客数 
+        <span id="busuanzi_value_site_uv"></span>
+         人
+      </span>
+    
+    
+  
+</div>
+
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.0/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      headingSelector : CONFIG.toc.headingSelector || 'h1,h2,h3,h4,h5,h6',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      collapseDepth   : CONFIG.toc.collapseDepth || 0,
+      scrollSmooth    : true,
+      headingsOffset  : -boardTop
+    });
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+  });
+</script>
+
+
+  <script>
+  (function() {
+    var enableLang = CONFIG.code_language.enable && CONFIG.code_language.default;
+    var enableCopy = CONFIG.copy_btn;
+    if (!enableLang && !enableCopy) {
+      return;
+    }
+
+    function getBgClass(ele) {
+      return Fluid.utils.getBackgroundLightness(ele) >= 0 ? 'code-widget-light' : 'code-widget-dark';
+    }
+
+    var copyTmpl = '';
+    copyTmpl += '<div class="code-widget">';
+    copyTmpl += 'LANG';
+    copyTmpl += '</div>';
+    jQuery('.markdown-body pre').each(function() {
+      var $pre = jQuery(this);
+      if ($pre.find('code.mermaid').length > 0) {
+        return;
+      }
+      if ($pre.find('span.line').length > 0) {
+        return;
+      }
+
+      var lang = '';
+
+      if (enableLang) {
+        lang = CONFIG.code_language.default;
+        if ($pre[0].children.length > 0 && $pre[0].children[0].classList.length >= 2 && $pre.children().hasClass('hljs')) {
+          lang = $pre[0].children[0].classList[1];
+        } else if ($pre[0].getAttribute('data-language')) {
+          lang = $pre[0].getAttribute('data-language');
+        } else if ($pre.parent().hasClass('sourceCode') && $pre[0].children.length > 0 && $pre[0].children[0].classList.length >= 2) {
+          lang = $pre[0].children[0].classList[1];
+          $pre.parent().addClass('code-wrapper');
+        } else if ($pre.parent().hasClass('markdown-body') && $pre[0].classList.length === 0) {
+          $pre.wrap('<div class="code-wrapper"></div>');
+        }
+        lang = lang.toUpperCase().replace('NONE', CONFIG.code_language.default);
+      }
+      $pre.append(copyTmpl.replace('LANG', lang).replace('code-widget">',
+        getBgClass($pre[0]) + (enableCopy ? ' code-widget copy-btn" data-clipboard-snippet><i class="iconfont icon-copy"></i>' : ' code-widget">')));
+
+      if (enableCopy) {
+        Fluid.utils.createScript('https://lib.baomitu.com/clipboard.js/2.0.10/clipboard.min.js', function() {
+          var clipboard = new window.ClipboardJS('.copy-btn', {
+            target: function(trigger) {
+              var nodes = trigger.parentNode.childNodes;
+              for (var i = 0; i < nodes.length; i++) {
+                if (nodes[i].tagName === 'CODE') {
+                  return nodes[i];
+                }
+              }
+            }
+          });
+          clipboard.on('success', function(e) {
+            e.clearSelection();
+            e.trigger.innerHTML = e.trigger.innerHTML.replace('icon-copy', 'icon-success');
+            setTimeout(function() {
+              e.trigger.innerHTML = e.trigger.innerHTML.replace('icon-success', 'icon-copy');
+            }, 2000);
+          });
+        });
+      }
+    });
+  })();
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+  <script defer src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

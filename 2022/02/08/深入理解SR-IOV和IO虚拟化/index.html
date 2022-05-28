@@ -1,0 +1,870 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/favicon.png">
+  <link rel="icon" href="/img/favicon.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="Leo Hou">
+  <meta name="keywords" content="">
+  
+    <meta name="description" content="SR-IOV（Single Root I&#x2F;O Virtualization）是由PCI-SIG组织定义的PCIe规范的扩展规范《Single Root I&#x2F;O Virtualization and Sharing Specification》">
+<meta property="og:type" content="article">
+<meta property="og:title" content="深入理解SR-IOV和IO虚拟化">
+<meta property="og:url" content="http://example.com/2022/02/08/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3SR-IOV%E5%92%8CIO%E8%99%9A%E6%8B%9F%E5%8C%96/index.html">
+<meta property="og:site_name" content="Leo Hou">
+<meta property="og:description" content="SR-IOV（Single Root I&#x2F;O Virtualization）是由PCI-SIG组织定义的PCIe规范的扩展规范《Single Root I&#x2F;O Virtualization and Sharing Specification》">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/img/post/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3SR-IOV%E5%92%8CIO%E8%99%9A%E6%8B%9F%E5%8C%96/sriov.png">
+<meta property="article:published_time" content="2022-02-08T11:47:17.000Z">
+<meta property="article:modified_time" content="2022-05-28T11:14:15.000Z">
+<meta property="article:author" content="Leo Hou">
+<meta property="article:tag" content="SR-IOV">
+<meta property="article:tag" content="IO Virtualization">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="http://example.com/img/post/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3SR-IOV%E5%92%8CIO%E8%99%9A%E6%8B%9F%E5%8C%96/sriov.png">
+  
+  
+    <meta name="referrer" content="no-referrer-when-downgrade">
+  
+  
+  <title>深入理解SR-IOV和IO虚拟化 - Leo Hou</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"example.com","root":"/","version":"1.9.0","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+
+  
+<meta name="generator" content="Hexo 6.2.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Leo Hou</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                首页
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                归档
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                分类
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/tags/">
+                <i class="iconfont icon-tags-fill"></i>
+                标签
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                关于
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              &nbsp;<i class="iconfont icon-search"></i>&nbsp;
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">&nbsp;<i
+                class="iconfont icon-dark" id="color-toggle-icon"></i>&nbsp;</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="深入理解SR-IOV和IO虚拟化"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2022-02-08 19:47" pubdate>
+          2022年2月8日 晚上
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          <!-- compatible with older versions-->
+          4.5k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          <!-- compatible with older versions-->
+          38 分钟
+        
+      </span>
+    
+
+    
+    
+      
+        <span id="busuanzi_container_page_pv" style="display: none">
+          <i class="iconfont icon-eye" aria-hidden="true"></i>
+          <span id="busuanzi_value_page_pv"></span> 次
+        </span>
+        
+      
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">深入理解SR-IOV和IO虚拟化</h1>
+            
+            <div class="markdown-body">
+              
+              <h1 id="一、背景"><a href="#一、背景" class="headerlink" title="一、背景"></a>一、背景</h1><div class="markdown-body">
+&emsp;&emsp;SR-IOV（Single Root I/O Virtualization）是由PCI-SIG组织定义的PCIe规范的扩展规范《Single Root I/O
+Virtualization and Sharing Specification》，目的是通过提供一种标准规范，为VM（虚拟机）提供独立的内存空间、中断、DMA
+数据流，当前最新版本为1.1。<br>
+&emsp;&emsp;IO虚拟化有软件模拟、基于virtio的半虚拟化和设备直通三种方式，见图1.1，其中设备直通实现了数据面加速，允许物理
+PCIe设备可以直接访问虚拟机的GuestOS中运行相应驱动分配的物理地址（GPA）。</div>
+
+<h4 id=""><a href="#" class="headerlink" title=""></a></h4><p><img src="/2022/02/08/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3SR-IOV%E5%92%8CIO%E8%99%9A%E6%8B%9F%E5%8C%96/%E5%9B%BE1.1.png" srcset="/img/loading.gif" lazyload alt="图1.1"></p>
+<div class="markdown-body">
+&emsp;&emsp;SR-IOV的出现，支持了单个物理PCIe设备虚拟出多个虚拟PCIe设备，然后将虚拟PCIe设备直通到各虚拟机，以实现单个物理PCIe设备支撑多虚拟机的应用场景，如图1.2。</div>
+
+<h4 id="-1"><a href="#-1" class="headerlink" title=""></a></h4><p><img src="/2022/02/08/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3SR-IOV%E5%92%8CIO%E8%99%9A%E6%8B%9F%E5%8C%96/%E5%9B%BE1.2.png" srcset="/img/loading.gif" lazyload alt="图1.2"><br></p>
+<h1 id="二、SR-IOV原理"><a href="#二、SR-IOV原理" class="headerlink" title="二、SR-IOV原理"></a>二、SR-IOV原理</h1><h2 id="2-1-硬件实现"><a href="#2-1-硬件实现" class="headerlink" title="2.1 硬件实现"></a>2.1 硬件实现</h2><h3 id="2-1-1-SR-IOV基本结构"><a href="#2-1-1-SR-IOV基本结构" class="headerlink" title="2.1.1 SR-IOV基本结构"></a>2.1.1 SR-IOV基本结构</h3><div class="markdown-body">
+&emsp;&emsp;SR-IOV是在PCIe规范的基础上实现的，SR-IOV协议引入了两种类型功能的概念：物理功能 (Physical Function, PF)和虚拟功能 (Virtual Function, VF)，基本结构见图2.1.1。</div>
+
+<h4 id="-2"><a href="#-2" class="headerlink" title=""></a></h4><p><img src="/2022/02/08/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3SR-IOV%E5%92%8CIO%E8%99%9A%E6%8B%9F%E5%8C%96/%E5%9B%BE2.1.1.png" srcset="/img/loading.gif" lazyload alt="图2.1.1"><br></p>
+<div class="markdown-body">
+&emsp;&emsp;PF用于支持 SR-IOV 功能的 PCI 功能，如 SR-IOV 规范中定义，PF 包含 SR-IOV 功能配置结构体，用于管理 SR-IOV 功能。PF 是全功能的 PCIe 功能，可以像其他任何 PCIe 设备一样进行发现、管理和处理。PF 拥有完全配置资源，可以用于配置或控制 PCIe 设备。<br>
+&emsp;&emsp;VF是与PF关联的一种功能，是一种轻量级 PCIe 功能，可以与物理功能以及与同一物理功能关联的其他 VF 共享一个或多个物理资源。VF 仅允许拥有用于其自身行为的配置资源。
+所有的PF和VF共用一个物理的PCIe端口，通过Routing决定数据流的方向，所以PF和各VF的数据带宽总和不超过实际物理的PCIe端口的带宽。</div>
+
+<h3 id="2-1-2-VF的BAR空间资源"><a href="#2-1-2-VF的BAR空间资源" class="headerlink" title="2.1.2 VF的BAR空间资源"></a>2.1.2 VF的BAR空间资源</h3><div class="markdown-body">
+&emsp;&emsp;VF的BAR空间是PF的BAR空间资源中规划的一部分，VF不支持IO空间，所以VF的BAR空间也需要映射到系统内存，VF的BAR空间的物理资源排布如图2.1.2：</div>
+
+<h4 id="-3"><a href="#-3" class="headerlink" title=""></a></h4><p><img src="/2022/02/08/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3SR-IOV%E5%92%8CIO%E8%99%9A%E6%8B%9F%E5%8C%96/%E5%9B%BE2.1.2.png" srcset="/img/loading.gif" lazyload alt="图2.1.2"><br></p>
+<h3 id="2-1-3-PF的SR-IOV-Extended-Capabilities-配置"><a href="#2-1-3-PF的SR-IOV-Extended-Capabilities-配置" class="headerlink" title="2.1.3 PF的SR-IOV Extended Capabilities 配置"></a>2.1.3 PF的SR-IOV Extended Capabilities 配置</h3><div class="markdown-body">
+&emsp;&emsp;PF的PCIe扩展配置空间 SR-IOV Extended Capability支持对SR-IOV功能进行配置，如图2.1.3：</div>
+
+<h4 id="-4"><a href="#-4" class="headerlink" title=""></a></h4><p><img src="/2022/02/08/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3SR-IOV%E5%92%8CIO%E8%99%9A%E6%8B%9F%E5%8C%96/%E5%9B%BE2.1.3.png" srcset="/img/loading.gif" lazyload alt="图2.1.3"><br></p>
+<div class="markdown-body">
+• SR-IOV Control 字段的bit0位是SR-IOV的使能位，默认为0，表示关闭，如果需要开启SR-IOV功能，需要配<br>
+&emsp;置为1。<br>
+• TotalVFs字段表示PCIe Device支持VF的数量。<br>
+• NumVFs字段表示开启VF的数量，此值不应超过PCIe Device支持的VF的数量TotalVFs的值。<br>
+• First VF Offset字段表示第一个各VF相对PF的Routing ID（即Bus number、Device number、Function<br>
+&emsp;number）的偏移量。<br>
+• VF Stride字段表示相邻两个VF的Routing ID的偏移量。<br>
+其他字段含义详见《Single Root I/O Virtualization and Sharing Specification Revision 1.1》。</div>
+
+<h2 id="2-2-软件支持"><a href="#2-2-软件支持" class="headerlink" title="2.2 软件支持"></a>2.2 软件支持</h2><div class="markdown-body">
+Linux系统下，基于SR-IOV有三种应用场景：HostOS使用PF、HOstOS使用VF、将VF直通到VM（虚拟机），见图2.2.1：</div>
+
+<h4 id="-5"><a href="#-5" class="headerlink" title=""></a></h4><p><img src="/2022/02/08/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3SR-IOV%E5%92%8CIO%E8%99%9A%E6%8B%9F%E5%8C%96/%E5%9B%BE2.2.1.png" srcset="/img/loading.gif" lazyload alt="图2.2.1"></p>
+<div class="markdown-body">
+&emsp;&emsp;Linux系统中PCI驱动框架drivers/pci/iov.c提供了一系列对SR-IOV Extended Capability的配置接口函数，PCIe Device需要有相应的PF驱动和VF驱动，PF驱动支持配置SR-IOV，VF驱动需要实现相应的PCIe Device的业务功能（例如NIC或GPU），VFIO中的vfio-pic是一个简易符合VFIO框架PCIe驱动。</div>
+
+<h1 id="三、基于SR-IOV的IO虚拟化"><a href="#三、基于SR-IOV的IO虚拟化" class="headerlink" title="三、基于SR-IOV的IO虚拟化"></a>三、基于SR-IOV的IO虚拟化</h1><h2 id="3-1-PCIe设备直通系统框架"><a href="#3-1-PCIe设备直通系统框架" class="headerlink" title="3.1 PCIe设备直通系统框架"></a>3.1 PCIe设备直通系统框架</h2><div class="markdown-body">
+&emsp;&emsp;在QEMU/KVM的虚拟化架构下，PCIe设备直通的软硬件系统架构由下往上有如下几部分（见图3.1）：<br>
+• PCIe Device(支持SR-IOV功能)<br>
+• IOMMU<br>
+• VFIO<br>
+• Hypervisor（QEMU/KVM）<br>
+• VF Driver(运行在GuestOS中)<br>
+</div>
+
+<h4 id="-6"><a href="#-6" class="headerlink" title=""></a></h4><p><img src="/2022/02/08/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3SR-IOV%E5%92%8CIO%E8%99%9A%E6%8B%9F%E5%8C%96/%E5%9B%BE3.1.png" srcset="/img/loading.gif" lazyload alt="图3.1"></p>
+<h3 id="3-1-1-IOMMU"><a href="#3-1-1-IOMMU" class="headerlink" title="3.1.1 IOMMU"></a>3.1.1 IOMMU</h3><div class="markdown-body">
+&emsp;&emsp;IOMMU(I/O Memory Management Unit)是一个内存管理单元，主要针对外设访问系统内存市进行内存管理，
+像intel VT-d、AMD的IOMMU及ARM的SMMU都具有相同功能。IOMMU支持PCIe Device虚拟化的两个基础功能：地址重映射和
+中断重映射。</div>
+
+<h4 id="3-1-1-1-DMA物理地址重映射（DMA-Remapping-）"><a href="#3-1-1-1-DMA物理地址重映射（DMA-Remapping-）" class="headerlink" title="3.1.1.1 DMA物理地址重映射（DMA Remapping ）"></a>3.1.1.1 DMA物理地址重映射（DMA Remapping ）</h4><div class="markdown-body">
+1）地址空间隔离<br>
+&emsp;&emsp;在没有iommu的时候，用户态驱动可以通过设备dma可以访问到机器的全部的地址空间，如何保护机器物理内存区
+对于用户态驱动框架设计带来挑战。引入iommu以后，iommu通过控制每个设备dma地址到实际物理地址的映射转换，可以实现地
+址空间上的隔离，使设备只能访问规定的内存区域，见图3.1.1.1.1。</div>
+
+<h4 id="-7"><a href="#-7" class="headerlink" title=""></a></h4><p><img src="/2022/02/08/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3SR-IOV%E5%92%8CIO%E8%99%9A%E6%8B%9F%E5%8C%96/%E5%9B%BE3.1.1.1.1.png" srcset="/img/loading.gif" lazyload alt="图3.1.1.1.1"></p>
+<div class="markdown-body">
+2）GPA(虚拟机物理地址) --> HPA(宿主机物理地址)<br>
+&emsp;&emsp;物理PCI设备通过直通的方式进入到虚拟机的客户机时，客户机设备驱动使用透传设备的DMA访问虚拟机内存物理
+地址时，IOMMU会进行 GPA-->HPA的转换，详细转换细节在下一章节分析。</div>
+
+<h4 id="3-1-1-2-中断重映射"><a href="#3-1-1-2-中断重映射" class="headerlink" title="3.1.1.2 中断重映射"></a>3.1.1.2 中断重映射</h4><div class="markdown-body">
+&emsp;&emsp;以Intel VT-d为例，提出了两个机制支持中断重映射：<br>
+• 引入两种中断请求格式<br>
+&emsp;&emsp;兼容模式和重映射模式，Bit4位为0来表征为不可重映射中断，Bit4位为1来表征为可重映射中断，见图3.1.1.2.1
+和图3.1.1.2.2。</div>
+
+<h4 id="-8"><a href="#-8" class="headerlink" title=""></a></h4><p><img src="/2022/02/08/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3SR-IOV%E5%92%8CIO%E8%99%9A%E6%8B%9F%E5%8C%96/%E5%9B%BE3.1.1.2.1.png" srcset="/img/loading.gif" lazyload alt="图3.1.1.2.1"></p>
+<h4 id="-9"><a href="#-9" class="headerlink" title=""></a></h4><p><img src="/2022/02/08/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3SR-IOV%E5%92%8CIO%E8%99%9A%E6%8B%9F%E5%8C%96/%E5%9B%BE3.1.1.2.2.png" srcset="/img/loading.gif" lazyload alt="图3.1.1.2.2"></p>
+<p>• 引入Interrupt Remapping Table Entry (IRTE)<br></p>
+<div class="markdown-body">
+&emsp;&emsp;Interrupt Remapping Table Entry是一个二级表，需要先通过Interrupt Remapping Table Address 
+Register来找到Interrupt Remapping Table Entry所在的地址，Interrupt Remapping Table Entry的格式如图
+3.1.1.2.3：</div>
+
+<h4 id="-10"><a href="#-10" class="headerlink" title=""></a></h4><p><img src="/2022/02/08/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3SR-IOV%E5%92%8CIO%E8%99%9A%E6%8B%9F%E5%8C%96/%E5%9B%BE3.1.1.2.3.png" srcset="/img/loading.gif" lazyload alt="图3.1.1.2.3"></p>
+<div class="markdown-body">
+&emsp;&emsp;IOMMU中断重映射的实质是将来自PCIe设备的中断（包括来自IOAPIC和PCIe设备的MSI/MSI-X等)拦截下来判断是
+否为重映射中断，如果是重映射中断会通过查询中断映射表（Interrupt Remapping Table Entry）找到真正的中断路由信息然
+后发送给物理CPU。</div>
+
+<h3 id="3-1-2-VFIO"><a href="#3-1-2-VFIO" class="headerlink" title="3.1.2 VFIO"></a>3.1.2 VFIO</h3><div class="markdown-body">
+&emsp;&emsp;VFIO(Virtual Function I/O)是支持虚拟化的一套IO接口规范，基于IOMMU为HostOS的用户空间暴露PCIe设备
+的配置空间和DMA。VFIO的组成主要有以下及部分，见图3.1.2.1：</div>
+
+<h4 id="-11"><a href="#-11" class="headerlink" title=""></a></h4><p><img src="/2022/02/08/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3SR-IOV%E5%92%8CIO%E8%99%9A%E6%8B%9F%E5%8C%96/%E5%9B%BE3.1.2.1.png" srcset="/img/loading.gif" lazyload alt="图3.1.2.1"></p>
+<p>• VFIO Interface: VFIO通过设备文件向用户空间提供统一访问接口;<br>• Container文件描述符： 打开&#x2F;dev&#x2F;vfio字符设备可得<br>• IOMMU group文件描述符：打开&#x2F;dev&#x2F;vfio&#x2F;N文件可得<br>• Device文件描述符： 向IOMMU group文件描述符发起相关ioctl可得<br>• vfio_iommu_type1_driver: 为VFIO提供了IOMMU重映射驱动，向用户空间暴露DMA操作。<br>• vfio-pci： vfio支持pci设备直通时以vfio-pci作为pci设备驱动挂载到pci总线, 将pci设备io配置空间、中断暴露到用户空间。</p>
+<h3 id="3-1-3-QEMU-x2F-KVM-PCI设备直通"><a href="#3-1-3-QEMU-x2F-KVM-PCI设备直通" class="headerlink" title="3.1.3 QEMU&#x2F;KVM PCI设备直通"></a>3.1.3 QEMU&#x2F;KVM PCI设备直通</h3><div class="markdown-body">
+&emsp;&emsp;QEMU/KVM 的PCI设备直通QEMU的核心工作主要有两部分：<br>
+1） 读取PCIe设备信息<br>
+&emsp;&emsp;通过VFIO接口读取PCIe设备的配置空间和DMA信息。<br>
+2） 为虚拟机创建虚拟PCIe设备<br>
+&emsp;&emsp;为虚拟机创建虚拟PCIe设备，虚拟PCIe设备的寄存器规划和DMA信息是物理PCIe设备在虚拟机中的一一映射。<br>
+QEMU中PCI设备直通时vfio-pci注册流程见图3.1.3.1：</div>
+
+<h4 id="-12"><a href="#-12" class="headerlink" title=""></a></h4><p><img src="/2022/02/08/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3SR-IOV%E5%92%8CIO%E8%99%9A%E6%8B%9F%E5%8C%96/%E5%9B%BE3.1.3.1.png" srcset="/img/loading.gif" lazyload alt="图3.1.3.1"></p>
+<p>QEMU中PCI设备直通时vfio-pci初始化流程见图3.1.3.2：</p>
+<h4 id="-13"><a href="#-13" class="headerlink" title=""></a></h4><p><img src="/2022/02/08/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3SR-IOV%E5%92%8CIO%E8%99%9A%E6%8B%9F%E5%8C%96/%E5%9B%BE3.1.3.2.png" srcset="/img/loading.gif" lazyload alt="图3.1.3.2"></p>
+<h2 id="3-2-PCI设备直通数据面加速"><a href="#3-2-PCI设备直通数据面加速" class="headerlink" title="3.2 PCI设备直通数据面加速"></a>3.2 PCI设备直通数据面加速</h2><div class="markdown-body">
+&emsp;&emsp;PCI设备直通时，GuestOS中的设备驱动操作虚拟PCI设备的DMA时，QEMU会将上述操作通过VFIO接口下发给物理PCI设备的DMA，物理设备DMA收到GuestOS中的物理地址GPA，通过IOMMU的映射，找到Host主机物理内存的物理地址HPA，达到物理PCI设备直接访问GuestOS中的GPA，从而达到数据数据面加速。</div>
+
+<h3 id="3-2-1-GPA-gt-HPA的映射过程"><a href="#3-2-1-GPA-gt-HPA的映射过程" class="headerlink" title="3.2.1 GPA-&gt;HPA的映射过程"></a>3.2.1 GPA-&gt;HPA的映射过程</h3><div class="markdown-body">
+&emsp;&emsp;对于直通的设备，QEMU创建虚拟机时需要两方面的地址映射,见图3.2.1.1：<br>
+1）VM在创建时GuestOS的内存需要QEMU调用KVM最终通过EPT和MMU建立GVA->GPA->HPA的映射；<br>
+2）QEMU进行VM的虚拟PCI设备初始化时，会将HVA和iova（GPA）下发给IOMMU，让IOMMU建立GPA到HPA的映射关系。<br>
+&emsp;&emsp;当GuestOS中直通设备的驱动分配内存并配置DMA时，QEMU通过VFIO接口将iova（GPA）下发到PCI Device的DMA，DMA读取数据时经由IOMMU映射，找到相应的HPA。</div>
+
+<h4 id="-14"><a href="#-14" class="headerlink" title=""></a></h4><p><img src="/2022/02/08/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3SR-IOV%E5%92%8CIO%E8%99%9A%E6%8B%9F%E5%8C%96/%E5%9B%BE3.2.1.1.png" srcset="/img/loading.gif" lazyload alt="图3.2.1.1"></p>
+<h1 id="四、综述"><a href="#四、综述" class="headerlink" title="四、综述"></a>四、综述</h1><div class="markdown-body">
+&emsp;&emsp;SR-IOV本质上是PCIe硬件虚拟化技术，通过创建寄生于PF的VF，达到通过一个PF物理PCIe设备可以呈现多个VF虚拟PCIe 设备，然后借助QEMU/KVM的PCIe设备直通功能，将多个VF分配给多个虚拟机，实现单个物理PCIe设备可以通过设备直通的方式被多个虚拟机使用，并且实现数据面加速。</div>
+
+<h4 id="参考："><a href="#参考：" class="headerlink" title="参考："></a>参考：</h4><p>【1】《Intel® Virtualization Technology for Directed I&#x2F;O Architecture Specification Revision 3.3 》<br>【2】《Intel® 64 and IA-32 Architectures Software Developer’s Manual》<br>【3】《PCI Express®Base Specification Revision 3.0 》<br>【4】《Single Root I&#x2F;O Virtualization and Sharing Specification Revision 1.1》</p>
+
+              
+            </div>
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+    <div class="post-meta mr-3 d-flex align-items-center">
+      <i class="iconfont icon-category"></i>
+      
+
+<span class="category-chains">
+  
+  
+    
+      <span class="category-chain">
+        
+  <a href="/categories/Virtualization/" class="category-chain-item">Virtualization</a>
+  
+  
+
+      </span>
+    
+  
+</span>
+
+    </div>
+  
+  
+    <div class="post-meta">
+      <i class="iconfont icon-tags"></i>
+      
+        <a href="/tags/SR-IOV/">#SR-IOV</a>
+      
+        <a href="/tags/IO-Virtualization/">#IO Virtualization</a>
+      
+    </div>
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>深入理解SR-IOV和IO虚拟化</div>
+      <div>http://example.com/2022/02/08/深入理解SR-IOV和IO虚拟化/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>Leo Hou</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2022年2月8日</div>
+        </div>
+      
+      
+      <div class="license-meta-item">
+        <div>许可协议</div>
+        <div>
+          
+            
+            
+              <a target="_blank" href="https://creativecommons.org/licenses/by/4.0/">
+              <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                <i class="iconfont icon-by"></i>
+              </span>
+              </a>
+            
+          
+        </div>
+      </div>
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2022/02/15/%E5%A6%88%E5%A6%88%E6%97%A5%E8%AE%B0-2022-02-08/" title="妈妈日记-2022.02.08">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">妈妈日记-2022.02.08</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2022/02/07/%E5%A6%88%E5%A6%88%E6%97%A5%E8%AE%B0-2022-02-07/" title="妈妈日记-2022.02.07">
+                        <span class="hidden-mobile">妈妈日记-2022.02.07</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+  <article id="comments" lazyload>
+    
+  <div id="valine"></div>
+  <script type="text/javascript">
+    Fluid.utils.loadComments('#valine', function() {
+      Fluid.utils.createScript('https://lib.baomitu.com/valine/1.4.16/Valine.min.js', function() {
+        var options = Object.assign(
+          {"appId":"Yy30t3g5sTxDH0jBsq4bNY50-gzGzoHsz","appKey":"qjelPlVKOfIeUMd1wva77E97","path":"window.location.pathname","placeholder":null,"avatar":"retro","meta":["nick","mail","link"],"requiredFields":[],"pageSize":10,"lang":"zh-CN","highlight":false,"recordIP":false,"serverURLs":"","emojiCDN":null,"emojiMaps":null,"enableQQ":false,"visitor":true},
+          {
+            el: "#valine",
+            path: window.location.pathname
+          }
+        )
+        new Valine(options);
+        Fluid.utils.waitElementVisible('#valine .vcontent', () => {
+          var imgSelector = '#valine .vcontent img:not(.vemoji)';
+          Fluid.plugins.imageCaption(imgSelector);
+          Fluid.plugins.fancyBox(imgSelector);
+        })
+      });
+    });
+  </script>
+  <noscript>Please enable JavaScript to view the comments</noscript>
+
+
+  </article>
+
+
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header"><i class="iconfont icon-list"></i>&nbsp;目录</p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+    <div class="statistics">
+  
+  
+
+  
+    
+      <span id="busuanzi_container_site_pv" style="display: none">
+        总访问量 
+        <span id="busuanzi_value_site_pv"></span>
+         次
+      </span>
+    
+    
+      <span id="busuanzi_container_site_uv" style="display: none">
+        总访客数 
+        <span id="busuanzi_value_site_uv"></span>
+         人
+      </span>
+    
+    
+  
+</div>
+
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.0/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      headingSelector : CONFIG.toc.headingSelector || 'h1,h2,h3,h4,h5,h6',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      collapseDepth   : CONFIG.toc.collapseDepth || 0,
+      scrollSmooth    : true,
+      headingsOffset  : -boardTop
+    });
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+  });
+</script>
+
+
+  <script>
+  (function() {
+    var enableLang = CONFIG.code_language.enable && CONFIG.code_language.default;
+    var enableCopy = CONFIG.copy_btn;
+    if (!enableLang && !enableCopy) {
+      return;
+    }
+
+    function getBgClass(ele) {
+      return Fluid.utils.getBackgroundLightness(ele) >= 0 ? 'code-widget-light' : 'code-widget-dark';
+    }
+
+    var copyTmpl = '';
+    copyTmpl += '<div class="code-widget">';
+    copyTmpl += 'LANG';
+    copyTmpl += '</div>';
+    jQuery('.markdown-body pre').each(function() {
+      var $pre = jQuery(this);
+      if ($pre.find('code.mermaid').length > 0) {
+        return;
+      }
+      if ($pre.find('span.line').length > 0) {
+        return;
+      }
+
+      var lang = '';
+
+      if (enableLang) {
+        lang = CONFIG.code_language.default;
+        if ($pre[0].children.length > 0 && $pre[0].children[0].classList.length >= 2 && $pre.children().hasClass('hljs')) {
+          lang = $pre[0].children[0].classList[1];
+        } else if ($pre[0].getAttribute('data-language')) {
+          lang = $pre[0].getAttribute('data-language');
+        } else if ($pre.parent().hasClass('sourceCode') && $pre[0].children.length > 0 && $pre[0].children[0].classList.length >= 2) {
+          lang = $pre[0].children[0].classList[1];
+          $pre.parent().addClass('code-wrapper');
+        } else if ($pre.parent().hasClass('markdown-body') && $pre[0].classList.length === 0) {
+          $pre.wrap('<div class="code-wrapper"></div>');
+        }
+        lang = lang.toUpperCase().replace('NONE', CONFIG.code_language.default);
+      }
+      $pre.append(copyTmpl.replace('LANG', lang).replace('code-widget">',
+        getBgClass($pre[0]) + (enableCopy ? ' code-widget copy-btn" data-clipboard-snippet><i class="iconfont icon-copy"></i>' : ' code-widget">')));
+
+      if (enableCopy) {
+        Fluid.utils.createScript('https://lib.baomitu.com/clipboard.js/2.0.10/clipboard.min.js', function() {
+          var clipboard = new window.ClipboardJS('.copy-btn', {
+            target: function(trigger) {
+              var nodes = trigger.parentNode.childNodes;
+              for (var i = 0; i < nodes.length; i++) {
+                if (nodes[i].tagName === 'CODE') {
+                  return nodes[i];
+                }
+              }
+            }
+          });
+          clipboard.on('success', function(e) {
+            e.clearSelection();
+            e.trigger.innerHTML = e.trigger.innerHTML.replace('icon-copy', 'icon-success');
+            setTimeout(function() {
+              e.trigger.innerHTML = e.trigger.innerHTML.replace('icon-success', 'icon-copy');
+            }, 2000);
+          });
+        });
+      }
+    });
+  })();
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+  <script defer src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

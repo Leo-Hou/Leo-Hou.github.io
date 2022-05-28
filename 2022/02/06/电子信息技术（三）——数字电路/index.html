@@ -1,0 +1,809 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/favicon.png">
+  <link rel="icon" href="/img/favicon.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="Leo Hou">
+  <meta name="keywords" content="">
+  
+    <meta name="description" content="通过上期对电子信息技术简史的回顾，大家应该对电子信息技术的技术发展脉络有了基本的了解，那这期我们了解一下数字电路。不对啊，不应该先聊“电子信息技术（二）——模拟电路”么？">
+<meta property="og:type" content="article">
+<meta property="og:title" content="电子信息技术（三）——数字电路">
+<meta property="og:url" content="http://example.com/2022/02/06/%E7%94%B5%E5%AD%90%E4%BF%A1%E6%81%AF%E6%8A%80%E6%9C%AF%EF%BC%88%E4%B8%89%EF%BC%89%E2%80%94%E2%80%94%E6%95%B0%E5%AD%97%E7%94%B5%E8%B7%AF/index.html">
+<meta property="og:site_name" content="Leo Hou">
+<meta property="og:description" content="通过上期对电子信息技术简史的回顾，大家应该对电子信息技术的技术发展脉络有了基本的了解，那这期我们了解一下数字电路。不对啊，不应该先聊“电子信息技术（二）——模拟电路”么？">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/img/post/%E6%95%B0%E5%AD%97%E7%94%B5%E8%B7%AF/%E6%95%B0%E5%AD%97%E7%94%B5%E8%B7%AF.png">
+<meta property="article:published_time" content="2022-02-06T03:21:23.000Z">
+<meta property="article:modified_time" content="2022-05-28T11:14:15.000Z">
+<meta property="article:author" content="Leo Hou">
+<meta property="article:tag" content="数字电路">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="http://example.com/img/post/%E6%95%B0%E5%AD%97%E7%94%B5%E8%B7%AF/%E6%95%B0%E5%AD%97%E7%94%B5%E8%B7%AF.png">
+  
+  
+    <meta name="referrer" content="no-referrer-when-downgrade">
+  
+  
+  <title>电子信息技术（三）——数字电路 - Leo Hou</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"example.com","root":"/","version":"1.9.0","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+
+  
+<meta name="generator" content="Hexo 6.2.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Leo Hou</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                首页
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                归档
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                分类
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/tags/">
+                <i class="iconfont icon-tags-fill"></i>
+                标签
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                关于
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              &nbsp;<i class="iconfont icon-search"></i>&nbsp;
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">&nbsp;<i
+                class="iconfont icon-dark" id="color-toggle-icon"></i>&nbsp;</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="电子信息技术（三）——数字电路"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2022-02-06 11:21" pubdate>
+          2022年2月6日 上午
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          <!-- compatible with older versions-->
+          2k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          <!-- compatible with older versions-->
+          17 分钟
+        
+      </span>
+    
+
+    
+    
+      
+        <span id="busuanzi_container_page_pv" style="display: none">
+          <i class="iconfont icon-eye" aria-hidden="true"></i>
+          <span id="busuanzi_value_page_pv"></span> 次
+        </span>
+        
+      
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">电子信息技术（三）——数字电路</h1>
+            
+            <div class="markdown-body">
+              
+              <h3 id="前言："><a href="#前言：" class="headerlink" title="前言："></a>前言：</h3><div class="markdown-body">
+&emsp;&emsp;通过上期对电子信息技术简史的回顾，大家应该对电子信息技术的技术发展脉络有了基本的了解，那这期
+我们了解一下数字电路。<br>
+&emsp;&emsp;不对啊，不应该先聊“电子信息技术（二）——模拟电路”么？<br>
+&emsp;&emsp;据我个人理解，模拟电路应该是数字电路的基础，但模拟电路水太深了，不敢在此班门弄斧，如果有模电
+的大牛，可以将“模拟电路”这章补上。<br>
+&emsp;&emsp;言归正传，数字电路是现代信息技术的基础，学过数字电路的小伙伴应该记得，数字电路知识体系比较庞
+大，在大学也是用两个学期才能学完，但今天我们主要了解如下几个概念：二进制、逻辑运算、组合逻辑电路、时序逻辑
+电路。<br>
+</div>
+
+<h2 id="一、二进制"><a href="#一、二进制" class="headerlink" title="一、二进制"></a>一、二进制</h2><div class="markdown-body">
+&emsp;&emsp;大家平时生活中接触的主要是十进制计数，即逢十进一，二进制计数同理，逢二进一。二进制数据是用0
+和1两个数码来表示的数。它的基数为2，进位规则是“逢二进一”，借位规则是“借一当二”。<br>
+&emsp;&emsp;将二进制引入电子技术可以说是一个开创性的杰作，我们了解半导体电路的高低电平有高低之分，二进制
+的引入就是将高电平抽象为二进制数1，将低电平抽象为0，从此电子技术进入数字电路时代，数字电路可以计算二进制数
+字，当今世界最复杂的数字电路当属CPU。<br>
+</div>
+
+<h2 id="二、逻辑运算"><a href="#二、逻辑运算" class="headerlink" title="二、逻辑运算"></a>二、逻辑运算</h2><div class="markdown-body">
+&emsp;&emsp;既然引进了二进制计数，那这些数据就需要进行计算，十进制数中常用的加、减、乘、除这些运算被称为
+算数运算，二级制数同样可以进行算数运算，但同事二进制为数据的逻辑运算带来了便利。<br>
+&emsp;&emsp;逻辑运算又称布尔运算， 用等式表示判断，把推理看作等式的变换。<br>
+表示方式：<br>
+&emsp;&emsp;&emsp;&emsp;&emsp;"∨" 表示"或"<br>
+&emsp;&emsp;&emsp;&emsp;&emsp;"∧" 表示"与"<br>
+&emsp;&emsp;&emsp;&emsp;&emsp;"┐"表示"非"<br>
+&emsp;&emsp;&emsp;&emsp;&emsp;"=" 表示"等价"<br>
+&emsp;&emsp;&emsp;&emsp;&emsp;1和0表示"真"和"假"<br>
+&emsp;&emsp;在逻辑代数中，有与、或、非三种基本逻辑运算。表示逻辑运算的方法有多种，如语句描述、逻辑代数式、
+真值表、卡诺图等。逻辑运算中有逻辑常量和逻辑变量两个概念，逻辑常量只有两个，即0和1，用来表示两个对立的逻辑
+状态。逻辑变量与普通代数一样，也可以用字母、符号、数字及其组合来表示，但它们之间有着本质区别，因为逻辑常量的
+取值只有两个，即0和1，而没有中间值。<br>
+</div>
+
+<h2 id="三、组合逻辑电路和时序逻辑电路"><a href="#三、组合逻辑电路和时序逻辑电路" class="headerlink" title="三、组合逻辑电路和时序逻辑电路"></a>三、组合逻辑电路和时序逻辑电路</h2><div class="markdown-body">
+&emsp;&emsp;数字电路根据逻辑功能的不同特点，可以分成两大类，一类叫组合逻辑电路（组合电路），另一类叫做时
+序逻辑电路（时序电路）。<br> 
+</div>
+
+<h3 id="3-1-组合电路"><a href="#3-1-组合电路" class="headerlink" title="3.1 组合电路"></a>3.1 组合电路</h3><div class="markdown-body">
+&emsp;&emsp;组合电路：输出值只与当时的输入值有关，即输出惟一地由当时的输入值决定。与电路原来的状态无关，电路
+没有记忆功能，输出状态随着输入状态的变化而变化，类似于电阻性电路。<br> 
+其逻辑函数见下图:</div>
+
+<h4 id=""><a href="#" class="headerlink" title=""></a></h4><p><img src="/2022/02/06/%E7%94%B5%E5%AD%90%E4%BF%A1%E6%81%AF%E6%8A%80%E6%9C%AF%EF%BC%88%E4%B8%89%EF%BC%89%E2%80%94%E2%80%94%E6%95%B0%E5%AD%97%E7%94%B5%E8%B7%AF/%E7%BB%84%E5%90%88%E7%94%B5%E8%B7%AF.png" srcset="/img/loading.gif" lazyload alt="组合电路"><br>其中，a1-an为输入变量，y1-ym为输出变量。组合逻辑电路的特点归纳如下:<br>① 输入、输出之间没有返馈延迟通道;<br>② 电路中无记忆单元。</p>
+<h3 id="3-2-时序电路"><a href="#3-2-时序电路" class="headerlink" title="3.2 时序电路"></a>3.2 时序电路</h3><div class="markdown-body">
+&emsp;&emsp;时序电路：在逻辑功能上的特点是任意时刻的输出不仅取决于当时的输入信号，而且还取决于电路原来的状
+态，或者说，还与以前的输入有关，其相当于在组合逻辑的输入端加上了一个反馈输入，在其电路中有一个
+存储电路，其可以将输出的状态保持住。其结构形式见下图：</div>
+
+<h4 id="-1"><a href="#-1" class="headerlink" title=""></a></h4><p><img src="/2022/02/06/%E7%94%B5%E5%AD%90%E4%BF%A1%E6%81%AF%E6%8A%80%E6%9C%AF%EF%BC%88%E4%B8%89%EF%BC%89%E2%80%94%E2%80%94%E6%95%B0%E5%AD%97%E7%94%B5%E8%B7%AF/%E6%97%B6%E5%BA%8F%E7%94%B5%E8%B7%AF.png" srcset="/img/loading.gif" lazyload alt="时序电路"></p>
+<h4 id="3-2-1-时序逻辑电路的组成："><a href="#3-2-1-时序逻辑电路的组成：" class="headerlink" title="3.2.1 时序逻辑电路的组成："></a>3.2.1 时序逻辑电路的组成：</h4><div class="markdown-body">
+1) 驱动方程:(激励方程) 很简单时可默认不写 。<br>
+&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;Y=F(X,Qn)<br>
+2) 状态方程：将触发器特征方程改造而成的触发器的次态输出Qn+1与现态输出Qn的关系。<br>
+&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;Qn+1=H(Z,Qn)<br>
+3) 输出方程：电路最终输出与触发器输出Qn的关系。<br>
+&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;Y=F(X,Qn)<br></div>
+<div class="markdown-body">
+&emsp;&emsp;三种方程中，驱动方程、状态方程最重要，输出方程往往可以不要，因为电路简单时，触发器的输出Qn一般就是
+电路的最终输出。</div>
+
+<h4 id="3-2-2-时序电路分类"><a href="#3-2-2-时序电路分类" class="headerlink" title="3.2.2 时序电路分类"></a>3.2.2 时序电路分类</h4><p>1）时序电路分为同步时序电路和异步时序电路：<br>同步时序电路：触发器状态的变化都是同一时钟操作下同时发生的。<br>异步时序电路：触发器状态的变化不是同时发生的。</p>
+<p>2）时序电路分为米利（Mealy）型和摩尔（Moore）型：<br>米利型（Mealy）：输出信号取决于输入变量和存储电路的状态。<br>摩尔型（Moore）：输出信号仅仅取决于存储电路的状态。（摩尔型是米利型的特例而已）</p>
+<p>引用：<br>[1]阎石，《数字电子技术基础 (第五版) 》，高等教育出版社</p>
+
+              
+            </div>
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+    <div class="post-meta mr-3 d-flex align-items-center">
+      <i class="iconfont icon-category"></i>
+      
+
+<span class="category-chains">
+  
+  
+    
+      <span class="category-chain">
+        
+  <a href="/categories/%E7%94%B5%E5%AD%90%E4%BF%A1%E6%81%AF%E6%8A%80%E6%9C%AF/" class="category-chain-item">电子信息技术</a>
+  
+  
+
+      </span>
+    
+  
+</span>
+
+    </div>
+  
+  
+    <div class="post-meta">
+      <i class="iconfont icon-tags"></i>
+      
+        <a href="/tags/%E6%95%B0%E5%AD%97%E7%94%B5%E8%B7%AF/">#数字电路</a>
+      
+    </div>
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>电子信息技术（三）——数字电路</div>
+      <div>http://example.com/2022/02/06/电子信息技术（三）——数字电路/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>Leo Hou</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2022年2月6日</div>
+        </div>
+      
+      
+      <div class="license-meta-item">
+        <div>许可协议</div>
+        <div>
+          
+            
+            
+              <a target="_blank" href="https://creativecommons.org/licenses/by/4.0/">
+              <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                <i class="iconfont icon-by"></i>
+              </span>
+              </a>
+            
+          
+        </div>
+      </div>
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2022/02/06/%E7%94%B5%E5%AD%90%E4%BF%A1%E6%81%AF%E6%8A%80%E6%9C%AF%EF%BC%88%E5%9B%9B%EF%BC%89%E2%80%94%E2%80%94CPU%E6%9E%B6%E6%9E%84/" title="电子信息技术（四）——CPU架构">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">电子信息技术（四）——CPU架构</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2022/02/06/%E7%94%B5%E5%AD%90%E4%BF%A1%E6%81%AF%E6%8A%80%E6%9C%AF%EF%BC%88%E4%B8%80%EF%BC%89%E2%80%94%E2%80%94%E7%AE%80%E5%8F%B2/" title="电子信息技术（一）——简史">
+                        <span class="hidden-mobile">电子信息技术（一）——简史</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+  <article id="comments" lazyload>
+    
+  <div id="valine"></div>
+  <script type="text/javascript">
+    Fluid.utils.loadComments('#valine', function() {
+      Fluid.utils.createScript('https://lib.baomitu.com/valine/1.4.16/Valine.min.js', function() {
+        var options = Object.assign(
+          {"appId":"Yy30t3g5sTxDH0jBsq4bNY50-gzGzoHsz","appKey":"qjelPlVKOfIeUMd1wva77E97","path":"window.location.pathname","placeholder":null,"avatar":"retro","meta":["nick","mail","link"],"requiredFields":[],"pageSize":10,"lang":"zh-CN","highlight":false,"recordIP":false,"serverURLs":"","emojiCDN":null,"emojiMaps":null,"enableQQ":false,"visitor":true},
+          {
+            el: "#valine",
+            path: window.location.pathname
+          }
+        )
+        new Valine(options);
+        Fluid.utils.waitElementVisible('#valine .vcontent', () => {
+          var imgSelector = '#valine .vcontent img:not(.vemoji)';
+          Fluid.plugins.imageCaption(imgSelector);
+          Fluid.plugins.fancyBox(imgSelector);
+        })
+      });
+    });
+  </script>
+  <noscript>Please enable JavaScript to view the comments</noscript>
+
+
+  </article>
+
+
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header"><i class="iconfont icon-list"></i>&nbsp;目录</p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+    <div class="statistics">
+  
+  
+
+  
+    
+      <span id="busuanzi_container_site_pv" style="display: none">
+        总访问量 
+        <span id="busuanzi_value_site_pv"></span>
+         次
+      </span>
+    
+    
+      <span id="busuanzi_container_site_uv" style="display: none">
+        总访客数 
+        <span id="busuanzi_value_site_uv"></span>
+         人
+      </span>
+    
+    
+  
+</div>
+
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.0/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      headingSelector : CONFIG.toc.headingSelector || 'h1,h2,h3,h4,h5,h6',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      collapseDepth   : CONFIG.toc.collapseDepth || 0,
+      scrollSmooth    : true,
+      headingsOffset  : -boardTop
+    });
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+  });
+</script>
+
+
+  <script>
+  (function() {
+    var enableLang = CONFIG.code_language.enable && CONFIG.code_language.default;
+    var enableCopy = CONFIG.copy_btn;
+    if (!enableLang && !enableCopy) {
+      return;
+    }
+
+    function getBgClass(ele) {
+      return Fluid.utils.getBackgroundLightness(ele) >= 0 ? 'code-widget-light' : 'code-widget-dark';
+    }
+
+    var copyTmpl = '';
+    copyTmpl += '<div class="code-widget">';
+    copyTmpl += 'LANG';
+    copyTmpl += '</div>';
+    jQuery('.markdown-body pre').each(function() {
+      var $pre = jQuery(this);
+      if ($pre.find('code.mermaid').length > 0) {
+        return;
+      }
+      if ($pre.find('span.line').length > 0) {
+        return;
+      }
+
+      var lang = '';
+
+      if (enableLang) {
+        lang = CONFIG.code_language.default;
+        if ($pre[0].children.length > 0 && $pre[0].children[0].classList.length >= 2 && $pre.children().hasClass('hljs')) {
+          lang = $pre[0].children[0].classList[1];
+        } else if ($pre[0].getAttribute('data-language')) {
+          lang = $pre[0].getAttribute('data-language');
+        } else if ($pre.parent().hasClass('sourceCode') && $pre[0].children.length > 0 && $pre[0].children[0].classList.length >= 2) {
+          lang = $pre[0].children[0].classList[1];
+          $pre.parent().addClass('code-wrapper');
+        } else if ($pre.parent().hasClass('markdown-body') && $pre[0].classList.length === 0) {
+          $pre.wrap('<div class="code-wrapper"></div>');
+        }
+        lang = lang.toUpperCase().replace('NONE', CONFIG.code_language.default);
+      }
+      $pre.append(copyTmpl.replace('LANG', lang).replace('code-widget">',
+        getBgClass($pre[0]) + (enableCopy ? ' code-widget copy-btn" data-clipboard-snippet><i class="iconfont icon-copy"></i>' : ' code-widget">')));
+
+      if (enableCopy) {
+        Fluid.utils.createScript('https://lib.baomitu.com/clipboard.js/2.0.10/clipboard.min.js', function() {
+          var clipboard = new window.ClipboardJS('.copy-btn', {
+            target: function(trigger) {
+              var nodes = trigger.parentNode.childNodes;
+              for (var i = 0; i < nodes.length; i++) {
+                if (nodes[i].tagName === 'CODE') {
+                  return nodes[i];
+                }
+              }
+            }
+          });
+          clipboard.on('success', function(e) {
+            e.clearSelection();
+            e.trigger.innerHTML = e.trigger.innerHTML.replace('icon-copy', 'icon-success');
+            setTimeout(function() {
+              e.trigger.innerHTML = e.trigger.innerHTML.replace('icon-success', 'icon-copy');
+            }, 2000);
+          });
+        });
+      }
+    });
+  })();
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+  <script defer src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

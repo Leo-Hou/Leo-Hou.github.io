@@ -1,0 +1,440 @@
+<?xml version="1.0" encoding="utf-8"?>
+<search>
+  
+  
+  
+  <entry>
+    <title>Linux字符设备驱动</title>
+    <link href="/2022/03/20/Linux%E5%AD%97%E7%AC%A6%E8%AE%BE%E5%A4%87%E9%A9%B1%E5%8A%A8/"/>
+    <url>/2022/03/20/Linux%E5%AD%97%E7%AC%A6%E8%AE%BE%E5%A4%87%E9%A9%B1%E5%8A%A8/</url>
+    
+    <content type="html"><![CDATA[<h1 id="一、字符设备"><a href="#一、字符设备" class="headerlink" title="一、字符设备"></a>一、字符设备</h1><div class="markdown-body">&emsp;&emsp;字符设备是指在I/O传输过程中以字符为单位进行传输的设备，是面向流的设备，常见的字符设备有鼠标、键盘、串口、控制台和LED等。</br>&emsp;&emsp;字符设备会在linux系统的/dev目录下对应一个设备文件。字符设备可以使用与普通文件相同的文件操作命令对字符设备文件进行操作，例如打开、关闭、读、写等。</div><h1 id="二、字符设备驱动模型"><a href="#二、字符设备驱动模型" class="headerlink" title="二、字符设备驱动模型"></a>二、字符设备驱动模型</h1><div class="markdown-body">&emsp;&emsp;Linux系统下字符设备驱动主要有2部分：用户态设备文件和内核态驱动中文件操作函数（见图2.1）。用户态的进程想和硬件设备交互时，首先要通过系统调用操作（read()、write()、ioctl()等）字符设备文件，字符设备驱动然后调用file_operations 中注册的操作函数和硬件交互。</div><h4 id=""><a href="#" class="headerlink" title=""></a></h4><p><img src="/2022/03/20/Linux%E5%AD%97%E7%AC%A6%E8%AE%BE%E5%A4%87%E9%A9%B1%E5%8A%A8/%E5%9B%BE2.1.png" alt="图2.1"> </p><h1 id="三、字符设备驱动构建"><a href="#三、字符设备驱动构建" class="headerlink" title="三、字符设备驱动构建"></a>三、字符设备驱动构建</h1><div class="markdown-body">&emsp;&emsp;Linux系统下构建字符设备驱动主要有部分要实现：驱动初始化、设备操作、驱动注销（见图3.1)。</br>a. 驱动初始化：</br>需要完成cdev的分配、cdev初始化、注册cdev及硬件设备初始化。</br>b. 设备操作：</br>需要填充 struct file_operations 结构体中断的操作函数，实现 struct file_operations 结构体中</br>的read()、write()和ioctl()等函数是驱动设计的主体工作。</br>c. 驱动注销：<br>即释放设备号、删除、注销cdev。</div><h4 id="-1"><a href="#-1" class="headerlink" title=""></a></h4><p><img src="/2022/03/20/Linux%E5%AD%97%E7%AC%A6%E8%AE%BE%E5%A4%87%E9%A9%B1%E5%8A%A8/%E5%9B%BE3.1.png" alt="图3.1"> </p><h2 id="3-1-struct-cdev"><a href="#3-1-struct-cdev" class="headerlink" title="3.1 struct cdev"></a>3.1 struct cdev</h2><p>&lt;include&#x2F;linux&#x2F;cdev.h&gt; </p><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><code class="hljs c"><span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">cdev</span> &#123;</span>   <br>　　<span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">kobject</span> <span class="hljs-title">kobj</span>;</span>                  <span class="hljs-comment">//内嵌的内核对象.  </span><br>　　<span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">module</span> *<span class="hljs-title">owner</span>;</span>                 <span class="hljs-comment">//该字符设备所在的内核模块（所有者）的对象指针，一般为THIS_MODULE主要用于模块计数  </span><br>　　<span class="hljs-type">const</span> <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">file_operations</span> *<span class="hljs-title">ops</span>;</span>    <span class="hljs-comment">//该结构描述了字符设备所能实现的操作集（打开、关闭、读/写、...），是极为关键的一个结构体</span><br>　　<span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">list_head</span> <span class="hljs-title">list</span>;</span>                <span class="hljs-comment">//用来将已经向内核注册的所有字符设备形成链表</span><br>　　<span class="hljs-type">dev_t</span> dev;                            <span class="hljs-comment">//字符设备的设备号，由主设备号和次设备号构成（如果是一次申请多个设备号，此设备号为第一个）</span><br>　　<span class="hljs-type">unsigned</span> <span class="hljs-type">int</span> count;                   <span class="hljs-comment">//隶属于同一主设备号的次设备号的个数</span><br>　　...<br>&#125;;  <br></code></pre></td></tr></table></figure><h2 id="3-2-cdev初始化"><a href="#3-2-cdev初始化" class="headerlink" title="3.2 cdev初始化"></a>3.2 cdev初始化</h2><div class="markdown-body">&emsp;&emsp;对于struct cdev，内核在头文件linux/cdev.h中提供了相应操作接口：</div><h3 id="3-2-1-为cdev分配内存"><a href="#3-2-1-为cdev分配内存" class="headerlink" title="3.2.1 为cdev分配内存"></a>3.2.1 为cdev分配内存</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs c"><span class="hljs-keyword">struct</span> cdev *<span class="hljs-title function_">cdev_alloc</span><span class="hljs-params">(<span class="hljs-type">void</span>)</span>;　　<br><span class="hljs-comment">/* 返回值：</span><br><span class="hljs-comment">　　　　成功 cdev 对象首地址</span><br><span class="hljs-comment">　　　　失败：NULL */</span><br></code></pre></td></tr></table></figure><h3 id="3-2-2-初始化cdev"><a href="#3-2-2-初始化cdev" class="headerlink" title="3.2.2 初始化cdev"></a>3.2.2 初始化cdev</h3><div class="markdown-body">&emsp;&emsp;初始化cdev的成员变量，并建立cdev和file_operations之间的关联。<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs c"><span class="hljs-type">void</span> <span class="hljs-title function_">cdev_init</span><span class="hljs-params">(<span class="hljs-keyword">struct</span> cdev *p, <span class="hljs-type">const</span> <span class="hljs-keyword">struct</span> file_operations *p)</span>;　　<br><span class="hljs-comment">/* 参数：</span><br><span class="hljs-comment">　　　　struct cdev *p - 被初始化的 cdev对象</span><br><span class="hljs-comment">　　　　const struct file_operations *fops - 字符设备操作方法集 */</span><br></code></pre></td></tr></table></figure></div>　　<h3 id="3-2-3-注册cdev设备对象"><a href="#3-2-3-注册cdev设备对象" class="headerlink" title="3.2.3 注册cdev设备对象"></a>3.2.3 注册cdev设备对象</h3><div class="markdown-body">&emsp;&emsp;注册cdev设备对象，添加到系统字符设备列表中。</div><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><code class="hljs c"><span class="hljs-type">int</span> <span class="hljs-title function_">cdev_add</span><span class="hljs-params">(<span class="hljs-keyword">struct</span> cdev *p, <span class="hljs-type">dev_t</span> dev, <span class="hljs-type">unsigned</span> count)</span>;<br><span class="hljs-comment">/* 参数：</span><br><span class="hljs-comment">　　　　struct cdev *p - 被注册的cdev对象</span><br><span class="hljs-comment">　　　　dev_t dev - 设备的第一个设备号</span><br><span class="hljs-comment">　　　　unsigned - 这个设备连续的次设备号数量</span><br><span class="hljs-comment">   返回值：</span><br><span class="hljs-comment">　　　　成功：0</span><br><span class="hljs-comment">　　　　失败：负数（绝对值是错误码）*/</span><br></code></pre></td></tr></table></figure><h3 id="3-2-4-设备号申请"><a href="#3-2-4-设备号申请" class="headerlink" title="3.2.4 设备号申请"></a>3.2.4 设备号申请</h3><div class="markdown-body">&emsp;&emsp;一个字符设备有一个主设备号和一个次设备号。主设备号用来标识与设备文件相连的驱动程序，用来反映设备类型。次设备号被驱动程序用来辨别操作的是哪个设备，用来区分同类型的设备。</br>&emsp;&emsp;linux内核中，设备号用dev_t来描述：<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs c"><span class="hljs-keyword">typedef</span> u_long <span class="hljs-type">dev_t</span>;　　<span class="hljs-comment">// 在32位机中是4个字节，高12位表示主设备号，低20位表示次设备号。 </span><br></code></pre></td></tr></table></figure>&emsp;&emsp;内核在头文件 linux/fs.h中提供了几个方便操作的宏定义来实现dev_t： </div><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs c"><span class="hljs-meta">#<span class="hljs-keyword">define</span> MAJOR(dev)    ((unsigned int) ((dev) &gt;&gt; MINORBITS))　　<span class="hljs-comment">// 从设备号中提取主设备号</span></span><br><span class="hljs-meta">#<span class="hljs-keyword">define</span> MINOR(dev)    ((unsigned int) ((dev) &amp; MINORMASK))　　<span class="hljs-comment">// 从设备号中提取次设备号</span></span><br><span class="hljs-meta">#<span class="hljs-keyword">define</span> MKDEV(ma,mi)    (((ma) <span class="hljs-string">&lt;&lt; MINORBITS) | (mi))&lt;/span&gt;</span>　　<span class="hljs-comment">// 将主、次设备号拼凑为设备号</span></span><br><span class="hljs-comment">/* 只是拼凑设备号,并未注册到系统中，若要使用需要竞态申请 */</span><br></code></pre></td></tr></table></figure><h4 id="3-2-4-1-静态申请设备号"><a href="#3-2-4-1-静态申请设备号" class="headerlink" title="3.2.4.1 - 静态申请设备号"></a>3.2.4.1 - 静态申请设备号</h4><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><code class="hljs c"><span class="hljs-type">int</span> <span class="hljs-title function_">register_chrdev_region</span><span class="hljs-params">(<span class="hljs-type">dev_t</span> from, <span class="hljs-type">unsigned</span> count, <span class="hljs-type">const</span> <span class="hljs-type">char</span> *name)</span>;<br><span class="hljs-comment">/* 参数：</span><br><span class="hljs-comment">　　　　dev_t from - 要申请的设备号（起始）</span><br><span class="hljs-comment">　　　　unsigned count - 要申请的设备号数量</span><br><span class="hljs-comment">　　　　const char *name - 设备名</span><br><span class="hljs-comment">   返回值：</span><br><span class="hljs-comment">　　　　成功：0</span><br><span class="hljs-comment">　　　　失败：负数（绝对值是错误码）*/</span><br></code></pre></td></tr></table></figure><h4 id="3-2-4-2-动态分配设备号"><a href="#3-2-4-2-动态分配设备号" class="headerlink" title="3.2.4.2 - 动态分配设备号"></a>3.2.4.2 - 动态分配设备号</h4><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><code class="hljs c"><span class="hljs-type">int</span> <span class="hljs-title function_">alloc_chrdev_region</span><span class="hljs-params">(<span class="hljs-type">dev_t</span> *dev, <span class="hljs-type">unsigned</span> baseminor, <span class="hljs-type">unsigned</span> count, <span class="hljs-type">const</span> <span class="hljs-type">char</span> *name)</span>;<br><span class="hljs-comment">/* 参数：</span><br><span class="hljs-comment">　　　　dev_t *dev - 用于保存分配到的第一个设备号（起始）</span><br><span class="hljs-comment">　　　　unsigned baseminor - 起始次设备号</span><br><span class="hljs-comment">　　　　unsigned count - 要分配设备号的数量</span><br><span class="hljs-comment">　　　　const char *name - 设备名</span><br><span class="hljs-comment">   返回值：</span><br><span class="hljs-comment">　　　　成功：0</span><br><span class="hljs-comment">　　　　失败：负数（绝对值是错误码）*/</span><br></code></pre></td></tr></table></figure><h4 id="3-2-4-3-创建设备文件"><a href="#3-2-4-3-创建设备文件" class="headerlink" title="3.2.4.3 创建设备文件"></a>3.2.4.3 创建设备文件</h4><div class="markdown-body">&emsp;&emsp;利用cat /proc/devices查看申请到的设备名，设备号。</div><h5 id="a-使用mknod手工创建："><a href="#a-使用mknod手工创建：" class="headerlink" title="a. 使用mknod手工创建："></a>a. 使用mknod手工创建：</h5><div class="markdown-body">&emsp;&emsp;mknod filename type major minor </div><h5 id="b-自动创建设备节点"><a href="#b-自动创建设备节点" class="headerlink" title="b. 自动创建设备节点:"></a>b. 自动创建设备节点:</h5><div class="markdown-body">&emsp;&emsp;利用udev（mdev）来实现设备文件的自动创建，首先应保证支持udev（mdev），由busybox配置。在驱动初始化代码里调用class_create为该设备创建一个class，再为每个设备调用device_create创建对应的设备。</div> <h2 id="3-3-file-operations-fops"><a href="#3-3-file-operations-fops" class="headerlink" title="3.3 file_operations *fops"></a>3.3 file_operations *fops</h2><div class="markdown-body">&emsp;&emsp;Linux下一切皆文件，字符设备也是抽象成设备文件，struct cdev 中的file_operations结构体中的成员函数是字符设备程序设计的主题内容，这些函数实际会在用户层程序进行Linux的open()、close()、write()、read()等系统调用时最终被调用。文件的操作接口结构：</div><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><code class="hljs c"><span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">file_operations</span> &#123;</span><br>　　<span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">module</span> *<span class="hljs-title">owner</span>;</span>　　<br>　　　　<span class="hljs-comment">/* 模块拥有者，一般为 THIS——MODULE */</span><br>　　<span class="hljs-type">ssize_t</span> (*read) (<span class="hljs-keyword">struct</span> file *, <span class="hljs-type">char</span> __user *, <span class="hljs-type">size_t</span>, <span class="hljs-type">loff_t</span> *);　　<br>　　　　<span class="hljs-comment">/* 从设备中读取数据，成功时返回读取的字节数，出错返回负值（绝对值是错误码） */</span><br>　　<span class="hljs-type">ssize_t</span> (*write) (<span class="hljs-keyword">struct</span> file *, <span class="hljs-type">const</span> <span class="hljs-type">char</span> __user *, <span class="hljs-type">size_t</span>, <span class="hljs-type">loff_t</span> *);　　　<br>　　　　<span class="hljs-comment">/* 向设备发送数据，成功时该函数返回写入字节数。若为被实现，用户调层用write()时系统将返回 -EINVAL*/</span><br>　　<span class="hljs-type">int</span> (*mmap) (<span class="hljs-keyword">struct</span> file *, <span class="hljs-keyword">struct</span> vm_area_struct *);　　<br>　　　　<span class="hljs-comment">/* 将设备内存映射内核空间进程内存中，若未实现，用户层调用 mmap()系统将返回 -ENODEV */</span><br>　　<span class="hljs-type">long</span> (*unlocked_ioctl)(<span class="hljs-keyword">struct</span> file *filp, <span class="hljs-type">unsigned</span> <span class="hljs-type">int</span> cmd, <span class="hljs-type">unsigned</span> <span class="hljs-type">long</span> arg);　　<br>　　　　<span class="hljs-comment">/* 提供设备相关控制命令（读写设备参数、状态，控制设备进行读写...）的实现，当调用成功时返回一个非负值 */</span><br>　　<span class="hljs-type">int</span> (*open) (<span class="hljs-keyword">struct</span> inode *, <span class="hljs-keyword">struct</span> file *);　　<br>　　　　<span class="hljs-comment">/* 打开设备 */</span><br>　　<span class="hljs-type">int</span> (*release) (<span class="hljs-keyword">struct</span> inode *, <span class="hljs-keyword">struct</span> file *);　　<br>　　　　<span class="hljs-comment">/* 关闭设备 */</span><br>　　<span class="hljs-type">int</span> (*flush) (<span class="hljs-keyword">struct</span> file *, <span class="hljs-type">fl_owner_t</span> id);　　<br>　　　　<span class="hljs-comment">/* 刷新设备 */</span><br>　　<span class="hljs-type">loff_t</span> (*llseek) (<span class="hljs-keyword">struct</span> file *, <span class="hljs-type">loff_t</span>, <span class="hljs-type">int</span>);　　<br>　　　　<span class="hljs-comment">/* 用来修改文件读写位置，并将新位置返回，出错时返回一个负值 */</span><br>　　<span class="hljs-type">int</span> (*fasync) (<span class="hljs-type">int</span>, <span class="hljs-keyword">struct</span> file *, <span class="hljs-type">int</span>);　　<br>　　　　<span class="hljs-comment">/* 通知设备 FASYNC 标志发生变化 */</span><br>　　<span class="hljs-type">unsigned</span> <span class="hljs-title function_">int</span> <span class="hljs-params">(*poll)</span> <span class="hljs-params">(<span class="hljs-keyword">struct</span> file *, <span class="hljs-keyword">struct</span> poll_table_struct *)</span>;　　<br>　　　　<span class="hljs-comment">/* POLL机制，用于询问设备是否可以被非阻塞地立即读写。当询问的条件未被触发时，用户空间进行select()和poll()系统调用将引起进程阻塞 */</span><br>　　...<br>&#125;;<br></code></pre></td></tr></table></figure><h2 id="3-4-cdev注销"><a href="#3-4-cdev注销" class="headerlink" title="3.4 cdev注销"></a>3.4 cdev注销</h2><h3 id="3-4-1-释放设备号"><a href="#3-4-1-释放设备号" class="headerlink" title="3.4.1 释放设备号"></a>3.4.1 释放设备号</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs c"><span class="hljs-type">void</span> <span class="hljs-title function_">unregister_chrdev_region</span><span class="hljs-params">(<span class="hljs-type">dev_t</span> from, <span class="hljs-type">unsigned</span> count)</span>;<br><span class="hljs-comment">/* 参数：</span><br><span class="hljs-comment">　　　　dev_t from - 要释放的第一个设备号（起始）</span><br><span class="hljs-comment">　　　　unsigned count - 要释放的次设备号数量 */</span><br></code></pre></td></tr></table></figure><h3 id="3-4-2-注销cdev"><a href="#3-4-2-注销cdev" class="headerlink" title="3.4.2 注销cdev"></a>3.4.2 注销cdev</h3><p>将cdev对象从系统中移除</p><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs c"><span class="hljs-type">void</span> <span class="hljs-title function_">cdev_del</span><span class="hljs-params">(<span class="hljs-keyword">struct</span> cdev *p)</span>;<br><span class="hljs-comment">/*参数：　</span><br><span class="hljs-comment">　　　　struct cdev *p - 要移除的cdev对象 */</span><br></code></pre></td></tr></table></figure><h3 id="3-4-3-释放cdev内存"><a href="#3-4-3-释放cdev内存" class="headerlink" title="3.4.3 释放cdev内存"></a>3.4.3 释放cdev内存</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs c"><span class="hljs-type">void</span> <span class="hljs-title function_">cdev_put</span><span class="hljs-params">(<span class="hljs-keyword">struct</span> cdev *p)</span>;<br><span class="hljs-comment">/*参数：</span><br><span class="hljs-comment">　　　　struct cdev *p - 要移除的cdev对象 */</span><br></code></pre></td></tr></table></figure>]]></content>
+    
+    
+    <categories>
+      
+      <category>Linux Driver</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>字符设备</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>QEMU/KVM源码分析之——虚拟机创建流程</title>
+    <link href="/2022/03/13/QEMU-KVM%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%E4%B9%8B%E2%80%94%E2%80%94%E8%99%9A%E6%8B%9F%E6%9C%BA%E5%88%9B%E5%BB%BA%E6%B5%81%E7%A8%8B/"/>
+    <url>/2022/03/13/QEMU-KVM%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%E4%B9%8B%E2%80%94%E2%80%94%E8%99%9A%E6%8B%9F%E6%9C%BA%E5%88%9B%E5%BB%BA%E6%B5%81%E7%A8%8B/</url>
+    
+    <content type="html"><![CDATA[<h1 id="一、背景"><a href="#一、背景" class="headerlink" title="一、背景"></a>一、背景</h1><div class="markdown-body">&emsp;&emsp;Linux系统下QEMU/KVM虚拟化架构有两部分：QEMU和KVM。<br>&emsp;&emsp;QEMU用户态虚拟机管理工具，它是一个普通的Linux进程，为客户机提供设备模拟的功能，包括模拟BIOS、PCI/PCIE总线、磁盘、网卡、显卡、声卡、键盘、鼠标等。同时它通过ioctl系统调用与内核态的KVM模块进行交互 。<br>&emsp;&emsp;KVM内核模块，它属于标准Linux内核的一部分，是一个专门提供虚拟化功能的模块，主要负责CPU和内存的虚拟化，包括：客户机的创建、虚拟内存的分配、 CPU执行模式的切换、vCPU寄存器的访问、vCPU指令的执行。<br>&emsp;&emsp;QEMU和KVM通过IOCTL进行交互，Linux系统下QMEU/KVM虚拟化架构见图1.1：</div><h4 id=""><a href="#" class="headerlink" title=""></a></h4><p><img src="/2022/03/13/QEMU-KVM%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%E4%B9%8B%E2%80%94%E2%80%94%E8%99%9A%E6%8B%9F%E6%9C%BA%E5%88%9B%E5%BB%BA%E6%B5%81%E7%A8%8B/%E5%9B%BE1.1.png" alt="图1.1"></p><h1 id="二、虚拟机创建流程"><a href="#二、虚拟机创建流程" class="headerlink" title="二、虚拟机创建流程"></a>二、虚拟机创建流程</h1><h2 id="2-1-KVM初始化流程"><a href="#2-1-KVM初始化流程" class="headerlink" title="2.1  KVM初始化流程"></a>2.1  KVM初始化流程</h2><div class="markdown-body">&emsp;&emsp;KVM是Linux系统下的一个内核模块，下面以AMD的x86架构为例介绍KVM内核模块的初始化流程。kvm-amd以内核模块的方式加载入Linux内核，然后执行kvm_init()，在kvm_init()中进行了一系列初始化，见图2.1.1：</div><h4 id="-1"><a href="#-1" class="headerlink" title=""></a></h4><p><img src="/2022/03/13/QEMU-KVM%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%E4%B9%8B%E2%80%94%E2%80%94%E8%99%9A%E6%8B%9F%E6%9C%BA%E5%88%9B%E5%BB%BA%E6%B5%81%E7%A8%8B/%E5%9B%BE2.1.1.png" alt="图2.1.1"></p><h2 id="2-2-QEMU中kvm-init注册流程"><a href="#2-2-QEMU中kvm-init注册流程" class="headerlink" title="2.2 QEMU中kvm_init注册流程"></a>2.2 QEMU中kvm_init注册流程</h2><div class="markdown-body">&emsp;&emsp;kvm_init是QEMU中创建虚拟机的入口，下图主要呈现了kvm_init的注册流程：</div><h4 id="-2"><a href="#-2" class="headerlink" title=""></a></h4><p><img src="/2022/03/13/QEMU-KVM%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%E4%B9%8B%E2%80%94%E2%80%94%E8%99%9A%E6%8B%9F%E6%9C%BA%E5%88%9B%E5%BB%BA%E6%B5%81%E7%A8%8B/%E5%9B%BE2.2.1.png" alt="图2.2.1"></p><h2 id="2-3-虚拟机创建流程"><a href="#2-3-虚拟机创建流程" class="headerlink" title="2.3 虚拟机创建流程"></a>2.3 虚拟机创建流程</h2><div class="markdown-body">&emsp;&emsp;kvm_init发起创建虚拟机的的流程，见图2.3.1：</div><h4 id="-3"><a href="#-3" class="headerlink" title=""></a></h4><p><img src="/2022/03/13/QEMU-KVM%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%E4%B9%8B%E2%80%94%E2%80%94%E8%99%9A%E6%8B%9F%E6%9C%BA%E5%88%9B%E5%BB%BA%E6%B5%81%E7%A8%8B/%E5%9B%BE2.3.1.png" alt="图2.3.1"></p><h2 id="2-4-vCPU创建流程"><a href="#2-4-vCPU创建流程" class="headerlink" title="2.4 vCPU创建流程"></a>2.4 vCPU创建流程</h2><div class="markdown-body">&emsp;&emsp;kvm_init创建虚拟机时同时要创建vCPU，kvm_init发起创建vCPU流程，见图2.4.1：</div><h4 id="-4"><a href="#-4" class="headerlink" title=""></a></h4><p><img src="/2022/03/13/QEMU-KVM%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%E4%B9%8B%E2%80%94%E2%80%94%E8%99%9A%E6%8B%9F%E6%9C%BA%E5%88%9B%E5%BB%BA%E6%B5%81%E7%A8%8B/%E5%9B%BE2.4.1.png" alt="图2.4.1"></p>]]></content>
+    
+    
+    <categories>
+      
+      <category>Virtualization</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>QEMU</tag>
+      
+      <tag>KVM</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>Linux驱动开发（一）——驱动何为</title>
+    <link href="/2022/02/16/Linux%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91%EF%BC%88%E4%B8%80%EF%BC%89%E2%80%94%E2%80%94%E9%A9%B1%E5%8A%A8%E4%BD%95%E4%B8%BA/"/>
+    <url>/2022/02/16/Linux%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91%EF%BC%88%E4%B8%80%EF%BC%89%E2%80%94%E2%80%94%E9%A9%B1%E5%8A%A8%E4%BD%95%E4%B8%BA/</url>
+    
+    <content type="html"><![CDATA[<h2 id="前言："><a href="#前言：" class="headerlink" title="前言："></a>前言：</h2><div class="markdown-body">&emsp;&emsp;上一章节主要介绍了嵌入式Linux系统的基本架构，事实上Linux系统的应用不只局限于嵌入式系统，像Linux桌面系统、Linux服务器系统也是使用率非常高的场景，所以围绕Linux的软件开发门类众多。通过前面对linux系统的了解，我们知道Linux系统中一个重要的组成部分——设备驱动，那何为设备驱动？设备驱动又有什么作用呢？</div><h1 id="一、Linux设备驱动"><a href="#一、Linux设备驱动" class="headerlink" title="一、Linux设备驱动"></a>一、Linux设备驱动</h1><div class="markdown-body">&emsp;&emsp;从字面理解驱动（driver）是要驾驶什么，其实驱动就是是驱使硬件，是为了能让系统中的硬件设备能够正常工作的一部分代码。众所周知，Linux系统一切皆文件，我们在用户态想操作一个设备时可以以操作文件的方式来和硬件设备交互，但了解硬件设备的小伙伴清楚硬件设备提供的基础交互接口无非是寄存器、DMA、fifo等，那怎么通过文件的方式访问硬件设备呢？驱动程序大吼一声：没错，正是在下！<br>&emsp;&emsp;驱动程序可以看成系统用户设备文件接口和硬件设备接口中间的翻译官，对下要安照硬件设备的工作方式对设备进行控制，并进行数据交互，对上要将硬件设备独有的工作方式进行抽象，封装成文件的各种访问操作接口及方式。</div><h1 id="二、Linux设备驱动分类"><a href="#二、Linux设备驱动分类" class="headerlink" title="二、Linux设备驱动分类"></a>二、Linux设备驱动分类</h1><div class="markdown-body">&emsp;&emsp;传统Linux系统会将设备驱动分为三大类：字符设备驱动、块设备驱动、网络设备驱动。除了以上三种还有一些设备无法纳入到这三种设备驱动模型的杂散（misc）设备，其实杂散设备也是以字符设备为基础，进行了更进步的抽象与封装。除了上面那些，在服务器领域，因为有IOMMU的加持，Linux内核实现了如 UIO，VFIO、USB等用户态驱动接口，基于用户态驱动的DPDK、SPDK等也在蓬勃发展。后续将依次介绍三种传统的Linux驱动程序。</div>]]></content>
+    
+    
+    <categories>
+      
+      <category>Linux Driver</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>linux driver</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>嵌入式软件开发（三）——嵌入式linux系统</title>
+    <link href="/2022/02/15/%E5%B5%8C%E5%85%A5%E5%BC%8F%E8%BD%AF%E4%BB%B6%E5%BC%80%E5%8F%91%EF%BC%88%E4%B8%89%EF%BC%89%E2%80%94%E2%80%94%E5%B5%8C%E5%85%A5%E5%BC%8Flinux%E7%B3%BB%E7%BB%9F/"/>
+    <url>/2022/02/15/%E5%B5%8C%E5%85%A5%E5%BC%8F%E8%BD%AF%E4%BB%B6%E5%BC%80%E5%8F%91%EF%BC%88%E4%B8%89%EF%BC%89%E2%80%94%E2%80%94%E5%B5%8C%E5%85%A5%E5%BC%8Flinux%E7%B3%BB%E7%BB%9F/</url>
+    
+    <content type="html"><![CDATA[<h2 id="前言："><a href="#前言：" class="headerlink" title="前言："></a>前言：</h2><div class="markdown-body">&emsp;&emsp;上一节聊到裸机程序开发，虽然通过一些操作系统的思想可以有条件的实现受限多任务，但裸机程序仍然无法高效的实现多任务处理。操作系统引入可以很好的解决这个问题，不止如此，操作系统还可以管理处理器资源、管理系统存储资源、管理系统外设及提供操作系统与用户之间的接口。综合来说操作系统就是管理系统的软、硬件资源，向下驱动硬件设备,向上为用户提供调用接口的一套管理机制。本节主要介绍嵌入式linux系统的组成。</div><h1 id="一、嵌入式linux系统的启动流程"><a href="#一、嵌入式linux系统的启动流程" class="headerlink" title="一、嵌入式linux系统的启动流程"></a>一、嵌入式linux系统的启动流程</h1><div class="markdown-body">&emsp;&emsp;通过前面章节我们了解到，CPU的运行过程就是获取软件指令并执行的过程，操作系统本质上也是一种软件，所以操作系统的启动过程也是CPU启动、运行的过程。此处以AARCH64架构CPU为例，嵌入式Linux启动流程主要分3部分：CPU片内firmware、boot loader（此处以u-boot为例）、linux系统，见下图：</div><h4 id=""><a href="#" class="headerlink" title=""></a></h4><p><img src="/2022/02/15/%E5%B5%8C%E5%85%A5%E5%BC%8F%E8%BD%AF%E4%BB%B6%E5%BC%80%E5%8F%91%EF%BC%88%E4%B8%89%EF%BC%89%E2%80%94%E2%80%94%E5%B5%8C%E5%85%A5%E5%BC%8Flinux%E7%B3%BB%E7%BB%9F/emb_sys1.png" alt="图1.1"></p><div class="markdown-body">&emsp;&emsp;firmware一般为CPU厂家在出厂时烧写的固件程序，其功能主要是CPU的初始化及CPU启动方式功能的实现，此部分视CPU厂家不同，实现的功能也不尽相同，有的CPU厂家就没有这部分，但有些NXP的CPU，通过CPU管教配置决定开发板是通过什么方式启动（Flash启动、SD卡启动、USB启动甚至网络启动），这个firmware就是要实现相应启动方式的硬件设备驱动及程序代码的拷贝。&emsp;&emsp;U-boot是boot loader的一种，是操作系统的引导程序，其主要作用可以分为三部分：CPU初始化、板级设备初始化、引导操作系统内核。U-boot本质上是一段裸机程序，按流程依次实现上述功能。&emsp;&emsp;Linux系统主要有两部分组成：linux kernel、filesystem，启动时先要启动内核，然后挂载根文件系统rootfs，然后再运行一系列应用进程。嵌入式系统中根文件系统的制作可以采用busybox。</div><h1 id="二、嵌入式Linux系统架构"><a href="#二、嵌入式Linux系统架构" class="headerlink" title="二、嵌入式Linux系统架构"></a>二、嵌入式Linux系统架构</h1><div class="markdown-body">&emsp;&emsp;嵌入式linux系统相对于通用计算机系统的桌面linux系统，其基本架构一致，但组件比桌面系统要少，前面我们了解嵌入式系统是软、硬件可裁剪，Linux系统的可裁剪特性完美切合了嵌入式系统的需求，所以在嵌入式系统中选择嵌入式Linux系统在系统裁剪方面有着先天优势，同时linux的系统调用遵循posix规范，方便Linux系统的应用在嵌入式系统中移植、适配。下图是嵌入式linux系统的整体结构图：</div><h4 id="-1"><a href="#-1" class="headerlink" title=""></a></h4><p><img src="/2022/02/15/%E5%B5%8C%E5%85%A5%E5%BC%8F%E8%BD%AF%E4%BB%B6%E5%BC%80%E5%8F%91%EF%BC%88%E4%B8%89%EF%BC%89%E2%80%94%E2%80%94%E5%B5%8C%E5%85%A5%E5%BC%8Flinux%E7%B3%BB%E7%BB%9F/emb_sys2.png" alt="图2.1"></p><div class="markdown-body">&emsp;&emsp;嵌入式Linux系统主要由用户态应用程序APP和内核组成，内核大方向上分两层：内核组件和设备驱动。用户态APP通过系统调用与内核态的设备驱动程序进行交互，由驱动程序对外设进行控制，协调外设工作。<br><h1 id="三、结束语"><a href="#三、结束语" class="headerlink" title="三、结束语"></a>三、结束语</h1><div class="markdown-body">&emsp;&emsp;至此，嵌入式部分的内容基本就分享完了，后续章节将着重探讨linux驱动程序开发及内核分析。<div>]]></content>
+    
+    
+    <categories>
+      
+      <category>嵌入式软件开发</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>嵌入式</tag>
+      
+      <tag>嵌入式linux</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>嵌入式软件开发（二）——裸机程序开发</title>
+    <link href="/2022/02/15/%E5%B5%8C%E5%85%A5%E5%BC%8F%E8%BD%AF%E4%BB%B6%E5%BC%80%E5%8F%91%EF%BC%88%E4%BA%8C%EF%BC%89%E2%80%94%E2%80%94%E8%A3%B8%E6%9C%BA%E7%A8%8B%E5%BA%8F%E5%BC%80%E5%8F%91/"/>
+    <url>/2022/02/15/%E5%B5%8C%E5%85%A5%E5%BC%8F%E8%BD%AF%E4%BB%B6%E5%BC%80%E5%8F%91%EF%BC%88%E4%BA%8C%EF%BC%89%E2%80%94%E2%80%94%E8%A3%B8%E6%9C%BA%E7%A8%8B%E5%BA%8F%E5%BC%80%E5%8F%91/</url>
+    
+    <content type="html"><![CDATA[<h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><div class="markdown-body">&emsp;&emsp;嵌入式应用软件的开发中裸机程序的开发是一个比较让人“酸爽”的体验，为何要用“酸爽”这个词，且听分解。<div><h1 id="一、裸机程序开发的特点"><a href="#一、裸机程序开发的特点" class="headerlink" title="一、裸机程序开发的特点"></a>一、裸机程序开发的特点</h1><div class="markdown-body">&emsp;&emsp;裸机程序开发很简单，因为没有多任务，可以一个流程跑到黑，入口函数就是main（），所有的工作流程都可以在main（）中依次调用，顺序执行，就像车间流水线那么简单，无需太多逻辑。<br>&emsp;&emsp;但裸机程序开发又非常麻烦，习惯上位机编程的人遇到估计要口吐芬芳。因为裸机程序简单，所以没有应用API可以调用，想干什自己实现，如果所选的MCU厂家够良心，可能开发SDK中会携带部分发开lib库供调用，如果遇到大撒把的MCU厂商，那呵呵，自求多福吧。<br>&emsp;&emsp;举个最简单的例子，如果想打印一串字符，大家肯定会说用print（）啊，对不起还真不见得有，这时候就需要开发者自己构建打印函数的API了，以串口打印为例：<br>1）实现串口单字节输出函数uart_send_byte()；<br>2）实现串口多字节输出函数uart_send_ multi_bytes()；<br>3）ascii码转换函数value2ascii()；<br>4）打印函数print（）；<br>其调用关系为：<br>    <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs c">print（）<br>      --&gt;value2ascii()<br>      --&gt;uart_send_ <span class="hljs-title function_">multi_bytes</span><span class="hljs-params">()</span><br>                   --&gt;<span class="hljs-title function_">uart_send_byte</span><span class="hljs-params">()</span>；<br></code></pre></td></tr></table></figure>&emsp;&emsp;所以，裸机程序的开发简单、自由，让有些开发者可以天马行空不拘一格，但同时也很麻烦，好多事情都需要自己实现，开发效率低，让一些开发者苦不堪言。也正是因为开放自由，嵌入式裸机程序开发没有标准，代码风格全凭工程师的编程风格，尤其是在项目交接时，让人岂一个“靠”字了得。<br>&emsp;&emsp;虽然裸机程序开发如此自由，但如果涉及多人开发时，还是建议统一开发标准，尽量做到分层化、模块化。</div><h1 id="二、裸机开发中的伪操作系统思想"><a href="#二、裸机开发中的伪操作系统思想" class="headerlink" title="二、裸机开发中的伪操作系统思想"></a>二、裸机开发中的伪操作系统思想</h1><div class="markdown-body">&emsp;&emsp;何为伪操作系统思想？其实伪操作系统就是在构建裸机程序架构时借鉴操作系统的思想。<br>&emsp;&emsp;我们知道裸机程序是没有多任务的，那如果在不上操作系统的情况下是否可以实现裸机程序的多任务？在某些特定环境下的任务是可以的，我们看一下如下伪码：<br>    <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><code class="hljs c">mian()<br>&#123;<br>    <span class="hljs-keyword">while</span>(<span class="hljs-number">1</span>)<br>    &#123;<br>        get_taskid();<br>        <span class="hljs-keyword">switch</span>(TASK_ID)<br>        &#123;<br>            <span class="hljs-keyword">case</span> TASK_1:<br>            &#123;<br>                process1();<br>                next_taskid();<br>                <span class="hljs-keyword">break</span>;<br>            &#125;<br>            <span class="hljs-keyword">case</span> TASK_2:<br>            &#123;<br>                process2();<br>                next_taskid();<br>                <span class="hljs-keyword">break</span>;<br>            &#125;<br>            <span class="hljs-keyword">case</span> TASK_3:<br>            &#123;<br>                process3();<br>                next_taskid();<br>                <span class="hljs-keyword">break</span>;<br>            &#125;<br>            .<br>            .<br>            .<br>            <span class="hljs-keyword">default</span>:<br>            &#123;<br>                process_default();<br>                next_taskid();<br>                <span class="hljs-keyword">break</span>;<br>            &#125;        <br>        &#125;<br>    &#125;<br>&#125;<br></code></pre></td></tr></table></figure>&emsp;&emsp;通过上述伪码，我们构建了一个软件状态机，通过修改TASK_ID的值来改变执行流程，但有人要问，这个可以执行多任务么？如果配合上中断，这个结构是可以执行多任务的。如果中断处理我们同样按照Linux系统的上、下半部的处理原则，中断处理函数中只做TASK_ID的状态标记，不做其他任务处理，那这个架构可以理解为不会抢占的多任务架构。<br>&emsp;&emsp;那可否在上述结构上加上时间片呢？当然可以，这需要借助一个定时中断。<br>&emsp;&emsp;假设定时中断定时为10毫秒触发一次，同样定时中断处理函数中只做状态标记TASK_ID=TASK_TIMER，下半部的处理函数为time_process()，那只需要在函数get_taskid();下面加上如下伪码：<br>        <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs c"><span class="hljs-keyword">if</span>(TASK_ID == TASK_TIMER)&#123;<br>    time_process();<br>    next_taskid();<br>&#125;<br></code></pre></td></tr></table></figure>&emsp;&emsp;这样就实现时间片轮询了么？<br>&emsp;&emsp;我们知道定时器10毫秒触发一次，所以time_proces()每隔10ms执行一次，那其他流程处理函数共同享有10ms减去time_proces()执行的时间。<br>&emsp;&emsp;那time_proces()以外的其他流程执行时间超过10ms怎么办，这个架构下要求一个处理流程不易过长，尽量切分成最小执行单元，整体放入大流程中。</div>]]></content>
+    
+    
+    <categories>
+      
+      <category>嵌入式软件开发</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>嵌入式</tag>
+      
+      <tag>裸机程序</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>妈妈日记-2022.02.15</title>
+    <link href="/2022/02/15/%E5%A6%88%E5%A6%88%E6%97%A5%E8%AE%B0-2022-02-15/"/>
+    <url>/2022/02/15/%E5%A6%88%E5%A6%88%E6%97%A5%E8%AE%B0-2022-02-15/</url>
+    
+    <content type="html"><![CDATA[<div class="markdown-body">2.15号&emsp;&emsp;天气&emsp;晴<br>&emsp;&emsp;下午3:20妈妈和姥爷姐姐小姨一起出来，大家拿着的工具是玩❄️套装、飞机、摔炮，妈妈的是一个水杯。看看姥爷玩飞机、姐姐和小姨玩摔炮就觉得很幸福，妈妈想你出生后我们的幸福会更加倍，到时候妈妈陪你一起玩飞机✈️<div>]]></content>
+    
+    
+    <categories>
+      
+      <category>予吾儿澂书</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>予吾儿澂书</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>妈妈日记-2022.02.14</title>
+    <link href="/2022/02/15/%E5%A6%88%E5%A6%88%E6%97%A5%E8%AE%B0-2022-02-14/"/>
+    <url>/2022/02/15/%E5%A6%88%E5%A6%88%E6%97%A5%E8%AE%B0-2022-02-14/</url>
+    
+    <content type="html"><![CDATA[<div class="markdown-body">&emsp;&emsp;今天是2.14情人节 你和妈妈过的第一个情人节 爸爸这个不浪漫的没有送妈妈任何礼物😠 不过不影响妈妈的心情，至少有你这个小情人陪着妈妈 妈妈真是好多天没出来锻炼了，偶尔走走还挺舒服，不知道你感觉到没有啊。现在时间已经是4:51了，但是外边还是亮亮的，虽然下雪了，但是还是感觉到了春意融融。你知道么，妈妈最喜欢多就是春天，万物复苏的季节，而你的预产期也是春天呢，好暖啊😄。好喜欢在这个时间点牵着爸爸和你的手，我们一起走在夕阳下。</div>]]></content>
+    
+    
+    <categories>
+      
+      <category>予吾儿澂书</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>予吾儿澂书</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>妈妈日记-2022.02.11</title>
+    <link href="/2022/02/15/%E5%A6%88%E5%A6%88%E6%97%A5%E8%AE%B0-2022-02-11/"/>
+    <url>/2022/02/15/%E5%A6%88%E5%A6%88%E6%97%A5%E8%AE%B0-2022-02-11/</url>
+    
+    <content type="html"><![CDATA[<div class="markdown-body">&emsp;&emsp;现在是2.11号凌晨2:59，宝宝凌晨2:41开始动的，顽皮的臭小子🤣。每次胎动妈妈不敢去安抚你 感觉每次安抚你都会回应妈妈，动的更欢。<br>&emsp;&emsp;现在是晚上9:32分，妈妈和爸爸语音了6分钟。在此之前妈妈在洗漱还偷吃了一口雪糕缓解妈妈焦虑的小心脏。8点开始给你做胎心监护20分钟，结果不是很理想。有两次5分和7分钟时显示你有脐带绕颈的危险，因为胎心太低了……于是休息了十分钟妈妈又进行了一次胎监，终于比上一次的好一些，但是还是有一次胎心过高一次胎心过低的两次预警，妈妈的心脏感觉都不会运转了，医生阿姨建议妈妈注意你的胎动….妈妈希望你和妈妈共同努力坚持到预产期，好不好。<br>&emsp;&emsp;妈妈每天到晚上都会有点肚子疼 希望你在里面一切都好 其实妈妈对爸爸有些抱怨：他的更多精力放到了工作上，今天通话了3次也没有超过25分钟…估计明天可能20分钟都不会有….</div>]]></content>
+    
+    
+    <categories>
+      
+      <category>予吾儿澂书</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>予吾儿澂书</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>妈妈日记-2022.02.08</title>
+    <link href="/2022/02/15/%E5%A6%88%E5%A6%88%E6%97%A5%E8%AE%B0-2022-02-08/"/>
+    <url>/2022/02/15/%E5%A6%88%E5%A6%88%E6%97%A5%E8%AE%B0-2022-02-08/</url>
+    
+    <content type="html"><![CDATA[<div class="markdown-body">2022.2.8号 &emsp;&emsp;天气&emsp;晴<br>&emsp;&emsp;我的澂宝宝：妈妈今天去了妇幼医院但原本的目的是为了开假条，结果却做了检查还有租胎心监护仪……额，妈妈可能被洗脑了。好像只要跟你的健康有关的妈妈可能都会短暂丧失理智：比如这个胎心监护仪好像没有太大作用，费用也有点高昂，作用可能只是为了缓解妈妈的玻璃心，但是爸爸没有批评妈妈的不理智租下这个仪器，反倒安慰妈妈…..不得不说妈妈的眼光真好😏 今天还发生了一件事也证明了上述观点不过妈妈不想告诉你具体是什么事，但妈妈想说只有自身能力强才不会被淘汰，希望你长大后是一个非常有能力的孩子。妈妈和爸爸真的很爱你，但爸爸妈妈也是第一次做父母所以会有很多不足的地方：比如，面对你偶尔一天的胎动少偶尔一天的胎动频繁会惊慌失措寝食难安有时还会小小的埋怨你这个大儿子太费母亲…尤其是在半夜你胎动频繁一直踢妈妈的时候妈妈可能会有小脾气，但事发后就会很后悔，在想是不是你发出的不舒服的信号妈妈没有接收到….所以在妈妈的这个角色上我也是个新人，咱们慢慢互相指教，一起成长，不要嫌弃我们的年龄大哈！<br>&emsp;&emsp;这是你今天的两次胎心监测，医生说第二个结果很好，妈妈好开心今晚可以安睡到天亮了😄</div>]]></content>
+    
+    
+    <categories>
+      
+      <category>予吾儿澂书</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>予吾儿澂书</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>深入理解SR-IOV和IO虚拟化</title>
+    <link href="/2022/02/08/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3SR-IOV%E5%92%8CIO%E8%99%9A%E6%8B%9F%E5%8C%96/"/>
+    <url>/2022/02/08/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3SR-IOV%E5%92%8CIO%E8%99%9A%E6%8B%9F%E5%8C%96/</url>
+    
+    <content type="html"><![CDATA[<h1 id="一、背景"><a href="#一、背景" class="headerlink" title="一、背景"></a>一、背景</h1><div class="markdown-body">&emsp;&emsp;SR-IOV（Single Root I/O Virtualization）是由PCI-SIG组织定义的PCIe规范的扩展规范《Single Root I/OVirtualization and Sharing Specification》，目的是通过提供一种标准规范，为VM（虚拟机）提供独立的内存空间、中断、DMA数据流，当前最新版本为1.1。<br>&emsp;&emsp;IO虚拟化有软件模拟、基于virtio的半虚拟化和设备直通三种方式，见图1.1，其中设备直通实现了数据面加速，允许物理PCIe设备可以直接访问虚拟机的GuestOS中运行相应驱动分配的物理地址（GPA）。</div><h4 id=""><a href="#" class="headerlink" title=""></a></h4><p><img src="/2022/02/08/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3SR-IOV%E5%92%8CIO%E8%99%9A%E6%8B%9F%E5%8C%96/%E5%9B%BE1.1.png" alt="图1.1"></p><div class="markdown-body">&emsp;&emsp;SR-IOV的出现，支持了单个物理PCIe设备虚拟出多个虚拟PCIe设备，然后将虚拟PCIe设备直通到各虚拟机，以实现单个物理PCIe设备支撑多虚拟机的应用场景，如图1.2。</div><h4 id="-1"><a href="#-1" class="headerlink" title=""></a></h4><p><img src="/2022/02/08/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3SR-IOV%E5%92%8CIO%E8%99%9A%E6%8B%9F%E5%8C%96/%E5%9B%BE1.2.png" alt="图1.2"><br></p><h1 id="二、SR-IOV原理"><a href="#二、SR-IOV原理" class="headerlink" title="二、SR-IOV原理"></a>二、SR-IOV原理</h1><h2 id="2-1-硬件实现"><a href="#2-1-硬件实现" class="headerlink" title="2.1 硬件实现"></a>2.1 硬件实现</h2><h3 id="2-1-1-SR-IOV基本结构"><a href="#2-1-1-SR-IOV基本结构" class="headerlink" title="2.1.1 SR-IOV基本结构"></a>2.1.1 SR-IOV基本结构</h3><div class="markdown-body">&emsp;&emsp;SR-IOV是在PCIe规范的基础上实现的，SR-IOV协议引入了两种类型功能的概念：物理功能 (Physical Function, PF)和虚拟功能 (Virtual Function, VF)，基本结构见图2.1.1。</div><h4 id="-2"><a href="#-2" class="headerlink" title=""></a></h4><p><img src="/2022/02/08/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3SR-IOV%E5%92%8CIO%E8%99%9A%E6%8B%9F%E5%8C%96/%E5%9B%BE2.1.1.png" alt="图2.1.1"><br></p><div class="markdown-body">&emsp;&emsp;PF用于支持 SR-IOV 功能的 PCI 功能，如 SR-IOV 规范中定义，PF 包含 SR-IOV 功能配置结构体，用于管理 SR-IOV 功能。PF 是全功能的 PCIe 功能，可以像其他任何 PCIe 设备一样进行发现、管理和处理。PF 拥有完全配置资源，可以用于配置或控制 PCIe 设备。<br>&emsp;&emsp;VF是与PF关联的一种功能，是一种轻量级 PCIe 功能，可以与物理功能以及与同一物理功能关联的其他 VF 共享一个或多个物理资源。VF 仅允许拥有用于其自身行为的配置资源。所有的PF和VF共用一个物理的PCIe端口，通过Routing决定数据流的方向，所以PF和各VF的数据带宽总和不超过实际物理的PCIe端口的带宽。</div><h3 id="2-1-2-VF的BAR空间资源"><a href="#2-1-2-VF的BAR空间资源" class="headerlink" title="2.1.2 VF的BAR空间资源"></a>2.1.2 VF的BAR空间资源</h3><div class="markdown-body">&emsp;&emsp;VF的BAR空间是PF的BAR空间资源中规划的一部分，VF不支持IO空间，所以VF的BAR空间也需要映射到系统内存，VF的BAR空间的物理资源排布如图2.1.2：</div><h4 id="-3"><a href="#-3" class="headerlink" title=""></a></h4><p><img src="/2022/02/08/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3SR-IOV%E5%92%8CIO%E8%99%9A%E6%8B%9F%E5%8C%96/%E5%9B%BE2.1.2.png" alt="图2.1.2"><br></p><h3 id="2-1-3-PF的SR-IOV-Extended-Capabilities-配置"><a href="#2-1-3-PF的SR-IOV-Extended-Capabilities-配置" class="headerlink" title="2.1.3 PF的SR-IOV Extended Capabilities 配置"></a>2.1.3 PF的SR-IOV Extended Capabilities 配置</h3><div class="markdown-body">&emsp;&emsp;PF的PCIe扩展配置空间 SR-IOV Extended Capability支持对SR-IOV功能进行配置，如图2.1.3：</div><h4 id="-4"><a href="#-4" class="headerlink" title=""></a></h4><p><img src="/2022/02/08/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3SR-IOV%E5%92%8CIO%E8%99%9A%E6%8B%9F%E5%8C%96/%E5%9B%BE2.1.3.png" alt="图2.1.3"><br></p><div class="markdown-body">• SR-IOV Control 字段的bit0位是SR-IOV的使能位，默认为0，表示关闭，如果需要开启SR-IOV功能，需要配<br>&emsp;置为1。<br>• TotalVFs字段表示PCIe Device支持VF的数量。<br>• NumVFs字段表示开启VF的数量，此值不应超过PCIe Device支持的VF的数量TotalVFs的值。<br>• First VF Offset字段表示第一个各VF相对PF的Routing ID（即Bus number、Device number、Function<br>&emsp;number）的偏移量。<br>• VF Stride字段表示相邻两个VF的Routing ID的偏移量。<br>其他字段含义详见《Single Root I/O Virtualization and Sharing Specification Revision 1.1》。</div><h2 id="2-2-软件支持"><a href="#2-2-软件支持" class="headerlink" title="2.2 软件支持"></a>2.2 软件支持</h2><div class="markdown-body">Linux系统下，基于SR-IOV有三种应用场景：HostOS使用PF、HOstOS使用VF、将VF直通到VM（虚拟机），见图2.2.1：</div><h4 id="-5"><a href="#-5" class="headerlink" title=""></a></h4><p><img src="/2022/02/08/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3SR-IOV%E5%92%8CIO%E8%99%9A%E6%8B%9F%E5%8C%96/%E5%9B%BE2.2.1.png" alt="图2.2.1"></p><div class="markdown-body">&emsp;&emsp;Linux系统中PCI驱动框架drivers/pci/iov.c提供了一系列对SR-IOV Extended Capability的配置接口函数，PCIe Device需要有相应的PF驱动和VF驱动，PF驱动支持配置SR-IOV，VF驱动需要实现相应的PCIe Device的业务功能（例如NIC或GPU），VFIO中的vfio-pic是一个简易符合VFIO框架PCIe驱动。</div><h1 id="三、基于SR-IOV的IO虚拟化"><a href="#三、基于SR-IOV的IO虚拟化" class="headerlink" title="三、基于SR-IOV的IO虚拟化"></a>三、基于SR-IOV的IO虚拟化</h1><h2 id="3-1-PCIe设备直通系统框架"><a href="#3-1-PCIe设备直通系统框架" class="headerlink" title="3.1 PCIe设备直通系统框架"></a>3.1 PCIe设备直通系统框架</h2><div class="markdown-body">&emsp;&emsp;在QEMU/KVM的虚拟化架构下，PCIe设备直通的软硬件系统架构由下往上有如下几部分（见图3.1）：<br>• PCIe Device(支持SR-IOV功能)<br>• IOMMU<br>• VFIO<br>• Hypervisor（QEMU/KVM）<br>• VF Driver(运行在GuestOS中)<br></div><h4 id="-6"><a href="#-6" class="headerlink" title=""></a></h4><p><img src="/2022/02/08/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3SR-IOV%E5%92%8CIO%E8%99%9A%E6%8B%9F%E5%8C%96/%E5%9B%BE3.1.png" alt="图3.1"></p><h3 id="3-1-1-IOMMU"><a href="#3-1-1-IOMMU" class="headerlink" title="3.1.1 IOMMU"></a>3.1.1 IOMMU</h3><div class="markdown-body">&emsp;&emsp;IOMMU(I/O Memory Management Unit)是一个内存管理单元，主要针对外设访问系统内存市进行内存管理，像intel VT-d、AMD的IOMMU及ARM的SMMU都具有相同功能。IOMMU支持PCIe Device虚拟化的两个基础功能：地址重映射和中断重映射。</div><h4 id="3-1-1-1-DMA物理地址重映射（DMA-Remapping-）"><a href="#3-1-1-1-DMA物理地址重映射（DMA-Remapping-）" class="headerlink" title="3.1.1.1 DMA物理地址重映射（DMA Remapping ）"></a>3.1.1.1 DMA物理地址重映射（DMA Remapping ）</h4><div class="markdown-body">1）地址空间隔离<br>&emsp;&emsp;在没有iommu的时候，用户态驱动可以通过设备dma可以访问到机器的全部的地址空间，如何保护机器物理内存区对于用户态驱动框架设计带来挑战。引入iommu以后，iommu通过控制每个设备dma地址到实际物理地址的映射转换，可以实现地址空间上的隔离，使设备只能访问规定的内存区域，见图3.1.1.1.1。</div><h4 id="-7"><a href="#-7" class="headerlink" title=""></a></h4><p><img src="/2022/02/08/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3SR-IOV%E5%92%8CIO%E8%99%9A%E6%8B%9F%E5%8C%96/%E5%9B%BE3.1.1.1.1.png" alt="图3.1.1.1.1"></p><div class="markdown-body">2）GPA(虚拟机物理地址) --> HPA(宿主机物理地址)<br>&emsp;&emsp;物理PCI设备通过直通的方式进入到虚拟机的客户机时，客户机设备驱动使用透传设备的DMA访问虚拟机内存物理地址时，IOMMU会进行 GPA-->HPA的转换，详细转换细节在下一章节分析。</div><h4 id="3-1-1-2-中断重映射"><a href="#3-1-1-2-中断重映射" class="headerlink" title="3.1.1.2 中断重映射"></a>3.1.1.2 中断重映射</h4><div class="markdown-body">&emsp;&emsp;以Intel VT-d为例，提出了两个机制支持中断重映射：<br>• 引入两种中断请求格式<br>&emsp;&emsp;兼容模式和重映射模式，Bit4位为0来表征为不可重映射中断，Bit4位为1来表征为可重映射中断，见图3.1.1.2.1和图3.1.1.2.2。</div><h4 id="-8"><a href="#-8" class="headerlink" title=""></a></h4><p><img src="/2022/02/08/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3SR-IOV%E5%92%8CIO%E8%99%9A%E6%8B%9F%E5%8C%96/%E5%9B%BE3.1.1.2.1.png" alt="图3.1.1.2.1"></p><h4 id="-9"><a href="#-9" class="headerlink" title=""></a></h4><p><img src="/2022/02/08/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3SR-IOV%E5%92%8CIO%E8%99%9A%E6%8B%9F%E5%8C%96/%E5%9B%BE3.1.1.2.2.png" alt="图3.1.1.2.2"></p><p>• 引入Interrupt Remapping Table Entry (IRTE)<br></p><div class="markdown-body">&emsp;&emsp;Interrupt Remapping Table Entry是一个二级表，需要先通过Interrupt Remapping Table Address Register来找到Interrupt Remapping Table Entry所在的地址，Interrupt Remapping Table Entry的格式如图3.1.1.2.3：</div><h4 id="-10"><a href="#-10" class="headerlink" title=""></a></h4><p><img src="/2022/02/08/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3SR-IOV%E5%92%8CIO%E8%99%9A%E6%8B%9F%E5%8C%96/%E5%9B%BE3.1.1.2.3.png" alt="图3.1.1.2.3"></p><div class="markdown-body">&emsp;&emsp;IOMMU中断重映射的实质是将来自PCIe设备的中断（包括来自IOAPIC和PCIe设备的MSI/MSI-X等)拦截下来判断是否为重映射中断，如果是重映射中断会通过查询中断映射表（Interrupt Remapping Table Entry）找到真正的中断路由信息然后发送给物理CPU。</div><h3 id="3-1-2-VFIO"><a href="#3-1-2-VFIO" class="headerlink" title="3.1.2 VFIO"></a>3.1.2 VFIO</h3><div class="markdown-body">&emsp;&emsp;VFIO(Virtual Function I/O)是支持虚拟化的一套IO接口规范，基于IOMMU为HostOS的用户空间暴露PCIe设备的配置空间和DMA。VFIO的组成主要有以下及部分，见图3.1.2.1：</div><h4 id="-11"><a href="#-11" class="headerlink" title=""></a></h4><p><img src="/2022/02/08/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3SR-IOV%E5%92%8CIO%E8%99%9A%E6%8B%9F%E5%8C%96/%E5%9B%BE3.1.2.1.png" alt="图3.1.2.1"></p><p>• VFIO Interface: VFIO通过设备文件向用户空间提供统一访问接口;<br>• Container文件描述符： 打开&#x2F;dev&#x2F;vfio字符设备可得<br>• IOMMU group文件描述符：打开&#x2F;dev&#x2F;vfio&#x2F;N文件可得<br>• Device文件描述符： 向IOMMU group文件描述符发起相关ioctl可得<br>• vfio_iommu_type1_driver: 为VFIO提供了IOMMU重映射驱动，向用户空间暴露DMA操作。<br>• vfio-pci： vfio支持pci设备直通时以vfio-pci作为pci设备驱动挂载到pci总线, 将pci设备io配置空间、中断暴露到用户空间。</p><h3 id="3-1-3-QEMU-x2F-KVM-PCI设备直通"><a href="#3-1-3-QEMU-x2F-KVM-PCI设备直通" class="headerlink" title="3.1.3 QEMU&#x2F;KVM PCI设备直通"></a>3.1.3 QEMU&#x2F;KVM PCI设备直通</h3><div class="markdown-body">&emsp;&emsp;QEMU/KVM 的PCI设备直通QEMU的核心工作主要有两部分：<br>1） 读取PCIe设备信息<br>&emsp;&emsp;通过VFIO接口读取PCIe设备的配置空间和DMA信息。<br>2） 为虚拟机创建虚拟PCIe设备<br>&emsp;&emsp;为虚拟机创建虚拟PCIe设备，虚拟PCIe设备的寄存器规划和DMA信息是物理PCIe设备在虚拟机中的一一映射。<br>QEMU中PCI设备直通时vfio-pci注册流程见图3.1.3.1：</div><h4 id="-12"><a href="#-12" class="headerlink" title=""></a></h4><p><img src="/2022/02/08/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3SR-IOV%E5%92%8CIO%E8%99%9A%E6%8B%9F%E5%8C%96/%E5%9B%BE3.1.3.1.png" alt="图3.1.3.1"></p><p>QEMU中PCI设备直通时vfio-pci初始化流程见图3.1.3.2：</p><h4 id="-13"><a href="#-13" class="headerlink" title=""></a></h4><p><img src="/2022/02/08/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3SR-IOV%E5%92%8CIO%E8%99%9A%E6%8B%9F%E5%8C%96/%E5%9B%BE3.1.3.2.png" alt="图3.1.3.2"></p><h2 id="3-2-PCI设备直通数据面加速"><a href="#3-2-PCI设备直通数据面加速" class="headerlink" title="3.2 PCI设备直通数据面加速"></a>3.2 PCI设备直通数据面加速</h2><div class="markdown-body">&emsp;&emsp;PCI设备直通时，GuestOS中的设备驱动操作虚拟PCI设备的DMA时，QEMU会将上述操作通过VFIO接口下发给物理PCI设备的DMA，物理设备DMA收到GuestOS中的物理地址GPA，通过IOMMU的映射，找到Host主机物理内存的物理地址HPA，达到物理PCI设备直接访问GuestOS中的GPA，从而达到数据数据面加速。</div><h3 id="3-2-1-GPA-gt-HPA的映射过程"><a href="#3-2-1-GPA-gt-HPA的映射过程" class="headerlink" title="3.2.1 GPA-&gt;HPA的映射过程"></a>3.2.1 GPA-&gt;HPA的映射过程</h3><div class="markdown-body">&emsp;&emsp;对于直通的设备，QEMU创建虚拟机时需要两方面的地址映射,见图3.2.1.1：<br>1）VM在创建时GuestOS的内存需要QEMU调用KVM最终通过EPT和MMU建立GVA->GPA->HPA的映射；<br>2）QEMU进行VM的虚拟PCI设备初始化时，会将HVA和iova（GPA）下发给IOMMU，让IOMMU建立GPA到HPA的映射关系。<br>&emsp;&emsp;当GuestOS中直通设备的驱动分配内存并配置DMA时，QEMU通过VFIO接口将iova（GPA）下发到PCI Device的DMA，DMA读取数据时经由IOMMU映射，找到相应的HPA。</div><h4 id="-14"><a href="#-14" class="headerlink" title=""></a></h4><p><img src="/2022/02/08/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3SR-IOV%E5%92%8CIO%E8%99%9A%E6%8B%9F%E5%8C%96/%E5%9B%BE3.2.1.1.png" alt="图3.2.1.1"></p><h1 id="四、综述"><a href="#四、综述" class="headerlink" title="四、综述"></a>四、综述</h1><div class="markdown-body">&emsp;&emsp;SR-IOV本质上是PCIe硬件虚拟化技术，通过创建寄生于PF的VF，达到通过一个PF物理PCIe设备可以呈现多个VF虚拟PCIe 设备，然后借助QEMU/KVM的PCIe设备直通功能，将多个VF分配给多个虚拟机，实现单个物理PCIe设备可以通过设备直通的方式被多个虚拟机使用，并且实现数据面加速。</div><h4 id="参考："><a href="#参考：" class="headerlink" title="参考："></a>参考：</h4><p>【1】《Intel® Virtualization Technology for Directed I&#x2F;O Architecture Specification Revision 3.3 》<br>【2】《Intel® 64 and IA-32 Architectures Software Developer’s Manual》<br>【3】《PCI Express®Base Specification Revision 3.0 》<br>【4】《Single Root I&#x2F;O Virtualization and Sharing Specification Revision 1.1》</p>]]></content>
+    
+    
+    <categories>
+      
+      <category>Virtualization</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>SR-IOV</tag>
+      
+      <tag>IO Virtualization</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>妈妈日记-2022.02.07</title>
+    <link href="/2022/02/07/%E5%A6%88%E5%A6%88%E6%97%A5%E8%AE%B0-2022-02-07/"/>
+    <url>/2022/02/07/%E5%A6%88%E5%A6%88%E6%97%A5%E8%AE%B0-2022-02-07/</url>
+    
+    <content type="html"><![CDATA[<div class="markdown-body">&emsp;&emsp;今天是2022.2.7 开年上班第一天。今天妈妈偷懒没有去上班。距离4.9号你的预产期还有61天，所以现在妈妈比较笨重，肚子很大，穿袜穿鞋都很费劲，这也是妈妈不爱出来散步的原因。但是今天太阳刚刚好，妈妈和小姨、姥爷、姐姐一起出来了：紫云公园放风筝🪁。妈妈好希望此时爸爸也在，好想爸爸呢。等你出生，我们一起放风筝哦🪁</div>]]></content>
+    
+    
+    <categories>
+      
+      <category>予吾儿澂书</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>予吾儿澂书</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>嵌入式软件开发（一）——嵌入式系统</title>
+    <link href="/2022/02/07/%E5%B5%8C%E5%85%A5%E5%BC%8F%E8%BD%AF%E4%BB%B6%E5%BC%80%E5%8F%91%EF%BC%88%E4%B8%80%EF%BC%89%E2%80%94%E2%80%94%E5%B5%8C%E5%85%A5%E5%BC%8F%E7%B3%BB%E7%BB%9F/"/>
+    <url>/2022/02/07/%E5%B5%8C%E5%85%A5%E5%BC%8F%E8%BD%AF%E4%BB%B6%E5%BC%80%E5%8F%91%EF%BC%88%E4%B8%80%EF%BC%89%E2%80%94%E2%80%94%E5%B5%8C%E5%85%A5%E5%BC%8F%E7%B3%BB%E7%BB%9F/</url>
+    
+    <content type="html"><![CDATA[<h2 id="前言："><a href="#前言：" class="headerlink" title="前言："></a>前言：</h2><div class="markdown-body">&emsp;&emsp;前一章主要介绍了电子信息技术的发展，我们了解大规模数字集成电路的巅峰是CPU。CPU的主要应用方向有服务器、PC电脑和各色嵌入式设备，这一章各节将主要介绍嵌入式系统，嵌入式软件、嵌入式操作系统等相关内容。</div><h1 id="一、嵌入式系统简介"><a href="#一、嵌入式系统简介" class="headerlink" title="一、嵌入式系统简介"></a>一、嵌入式系统简介</h1><div class="markdown-body">&emsp;&emsp;什么是嵌入式系统？&emsp;&emsp;嵌入式系统是以应用为核心。软硬件可裁减，适应应用系统对功能、可靠性、成本、体积、功耗等综合性能严格要求的专用计算机系统。&emsp;&emsp;所谓专用计算机系统是相对通用计算机系统（PC电脑）来说的，社会发展到今天，各行各业都可以看到嵌入式系统的设备：飞机、汽车等智能控制，工厂自动化智能设备，家电、智能家居设备等。还有更多应用场景此处就不一一列举。</div><h1 id="二、嵌入式最小系统"><a href="#二、嵌入式最小系统" class="headerlink" title="二、嵌入式最小系统"></a>二、嵌入式最小系统</h1><div class="markdown-body">&emsp;&emsp;嵌入式系统从开发技术来说主要分嵌入式硬件系统和嵌入式软件，此处嵌入式最小系统是指能够使得主控芯片（MCU、CPU）正常运行所需的最少必需器件的嵌入式硬件系统，下面介绍以 STM32L1xxx为主控MCU的嵌入式最小系统。&emsp;&emsp;MCU最小系统由①主控芯片，②复位电路，③时钟电路，④电源电路组成。同时一个基本完整的单片机功能还应包括调试下载电路。下图为STM32L1xxx的最小系统的设计参考电路：</div><h4 id=""><a href="#" class="headerlink" title=""></a><img src="/2022/02/07/%E5%B5%8C%E5%85%A5%E5%BC%8F%E8%BD%AF%E4%BB%B6%E5%BC%80%E5%8F%91%EF%BC%88%E4%B8%80%EF%BC%89%E2%80%94%E2%80%94%E5%B5%8C%E5%85%A5%E5%BC%8F%E7%B3%BB%E7%BB%9F/emb.png" alt="嵌入式最小系统"><br></h4><p>其中JTAG连接去是SWJ接口的下载调试电路，自举模式是通过拨码开关选择MCU的启动方式。</p><h1 id="三、嵌入式软件开发"><a href="#三、嵌入式软件开发" class="headerlink" title="三、嵌入式软件开发"></a>三、嵌入式软件开发</h1><div class="markdown-body">&emsp;&emsp;嵌入式软件的开发可以根据系统的复杂程度分为嵌入式裸机程序开发和嵌入式操作系统开发。<br>&emsp;&emsp;嵌入式裸机程序顾名思义，就是软件在MCU或CPU上裸奔，没有操作系统，所有应用程序只有一个处理流程，从头跑到尾，没有多任务的概念。<br>&emsp;&emsp;嵌入式操作系统开发是指软件采用嵌入式操作系统，基于操作系统进行相应设备应用的开发。比较常用的嵌入式操作系统有Vxworks、μC/OS-II、FreeRTOS、嵌入式linux等。<br>&emsp;&emsp;嵌入式操作系统从处理任务的时间可控性上可以分为实时操作系统和非实时操作系统。那是么是实时操作系统？<br>&emsp;&emsp;实时操作系统必须在已知的关键时间内完成关键操作，至少要在绝对大多数情况下在已知时间内完成关键操作。部分这类操作包括操作系统调用和中断处理。完全满足在指定时间内完成关键性操作的实时操作系统，被称为“硬实时”操作系统。大多数情况下能满足在指定时间内完成关键性操作的实时操作系统，被称为“软实时”操作系统。<br>&emsp;&emsp;通俗点说就是实时系统优先级高的任务可以打断任务优先级低的任务，并且其处理的结果又能在规定的时间之内来控制生产过程或对处理系统做出快速响应，调度一切可利用的资源完成实时任务。这里要声明一下，实时系统不是即时系统，不是一个任务一定要立马执行，而是只要满足“软实时”的操作系统也属于实时系统。实时操作系统有很多，Vxworks、μC/OS-II、FreeRTOS等都是实时系统，而国产的嵌入式操作系统包括Alios Things、Huawei LiteOS、RT-Thread、SylixOS等也都是实时系统。<br>&emsp;&emsp;非实时系统主要是分时操作系统，多个任务是通过时间片轮询的执行，任务执行时间不可控，像linux属于非实时系统。<br>&emsp;&emsp;因此在操作系统的选择上，像卫星这类对任务相应时间有要求的场景选择实时系统，像PC、手机这类对任务时间不可求的场景选择非实时系统，例如Android（Linux内核）、windows。<br></div>]]></content>
+    
+    
+    <categories>
+      
+      <category>嵌入式软件开发</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>嵌入式</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>电子信息技术（四）——CPU架构</title>
+    <link href="/2022/02/06/%E7%94%B5%E5%AD%90%E4%BF%A1%E6%81%AF%E6%8A%80%E6%9C%AF%EF%BC%88%E5%9B%9B%EF%BC%89%E2%80%94%E2%80%94CPU%E6%9E%B6%E6%9E%84/"/>
+    <url>/2022/02/06/%E7%94%B5%E5%AD%90%E4%BF%A1%E6%81%AF%E6%8A%80%E6%9C%AF%EF%BC%88%E5%9B%9B%EF%BC%89%E2%80%94%E2%80%94CPU%E6%9E%B6%E6%9E%84/</url>
+    
+    <content type="html"><![CDATA[<h1 id="前言："><a href="#前言：" class="headerlink" title="前言："></a>前言：</h1><div class="markdown-body">&emsp;&emsp;上一节聊到了数字电路，那大规模集成的数字电路的巅峰便是：CPU（中央处理器）。本节就聊一下CPU的基本架构和当前最广泛应用的两种处理器架构x86架构和ARM架构。</div><h1 id="一、CPU基本架构"><a href="#一、CPU基本架构" class="headerlink" title="一、CPU基本架构"></a>一、CPU基本架构</h1><div class="markdown-body">&emsp;&emsp;传统CPU的架构主要是由控制器（CU）、逻辑运算（ALU）、寄存器、中断系统及部分组成，其架构图见下图：</div><h4 id=""><a href="#" class="headerlink" title=""></a></h4><p><img src="/2022/02/06/%E7%94%B5%E5%AD%90%E4%BF%A1%E6%81%AF%E6%8A%80%E6%9C%AF%EF%BC%88%E5%9B%9B%EF%BC%89%E2%80%94%E2%80%94CPU%E6%9E%B6%E6%9E%84/cpu-arch.jpg" alt="CPU架构"><br><br>（1）CU：控制器根据预定的指令执行顺序，从主存中取出一条指令，按照该条指令的功能，控制CPU各部件的操作；<br>（2）ALU：接受控制器的命令，完成算术和逻辑运算；<br>（3）寄存器：存放下一指令地址；存放当前指令；存放操作数和计算结果；<br>（4）中断系统：处理异常情况和特殊请求。</p><p>以上是CPU的简单的架构图，但技术发展到当今，CPU的架构要比上述情况复杂的多。</p><h1 id="二、CPU的工作流程"><a href="#二、CPU的工作流程" class="headerlink" title="二、CPU的工作流程"></a>二、CPU的工作流程</h1><div class="markdown-body">&emsp;&emsp;一个计算机系统中的CPU最基本的工作就是执行存储的指令序列。CPU从存储中取出一条指令，译码并执行这条指令，保存执行结果，然后取下一条指令，周而复始。下图为CPU执行程序的过程：</div><h4 id="-1"><a href="#-1" class="headerlink" title=""></a></h4><p><img src="/2022/02/06/%E7%94%B5%E5%AD%90%E4%BF%A1%E6%81%AF%E6%8A%80%E6%9C%AF%EF%BC%88%E5%9B%9B%EF%BC%89%E2%80%94%E2%80%94CPU%E6%9E%B6%E6%9E%84/cpu-cmd.jpg" alt="CPU指令执行"></p><h4 id="举例："><a href="#举例：" class="headerlink" title="举例："></a>举例：</h4><p>如果想计算1+2&#x3D;？的一个运算，CPU的工作过程是怎样的呢？先看如下汇编（以x86为例）代码：<br>1） mov ax 1<br>2） mov bx 2<br>3） add ax bx</p><p>1）表示CPU执行mov指令时要将数值1写入寄存器ax；<br>2）同理是将数值2写入寄存器bx；<br>3）表示CPU在读取add指令后要将ax中的值和bx中的值用加法器进行加法运算，然后将计算结果放入寄存器。</p><h1 id="三、x86架构和ARM架构"><a href="#三、x86架构和ARM架构" class="headerlink" title="三、x86架构和ARM架构"></a>三、x86架构和ARM架构</h1><div class="markdown-body">&emsp;&emsp;当前最广泛应用的两种处理器架构x86架构和ARM架构，其中x86架构处理器主要用在PC电脑和服务器，ARM架构处理器主要在嵌入式电子设备中广泛应用，除了上诉CPU架构还有已经没落的 PowerPC、龙芯深耕的MIPS及被CPU架构的后起之秀RISC-V，此处不做进一步说明，我们主要聊一下x86架构和ARM架构。</div><h2 id="3-1-x86架构"><a href="#3-1-x86架构" class="headerlink" title="3.1 x86架构"></a>3.1 x86架构</h2><div class="markdown-body">&emsp;&emsp;x86架构CPU厂商的代表就是intel和AMD，intel是x86世界的霸主，在PC电脑和服务器应用领域拥有先起的生态优势，但近些年AMD在高性能服务器CPU推出ZEN架构以来，大有赶超intel的趋势，并且ZEN架构不断优化升级，在2020年10月推出了ZEN3架构，未来服务器市场是否会被AMD蚕食更多市场份额可以静观其变。至于intel架构此处不做多说，有兴趣的朋友可以自行查阅：</div><h4 id="https-software-intel-com-sites-default-files-managed-a4-60-253665-sdm-vol-1-pdf"><a href="#https-software-intel-com-sites-default-files-managed-a4-60-253665-sdm-vol-1-pdf" class="headerlink" title="https://software.intel.com/sites/default/files/managed/a4/60/253665-sdm-vol-1.pdf"></a><a href="https://software.intel.com/sites/default/files/managed/a4/60/253665-sdm-vol-1.pdf">https://software.intel.com/sites/default/files/managed/a4/60/253665-sdm-vol-1.pdf</a></h4><h2 id="3-2-ARM架构"><a href="#3-2-ARM架构" class="headerlink" title="3.2 ARM架构"></a>3.2 ARM架构</h2><div class="markdown-body">&emsp;&emsp;ARM指令集属于精简指令集，发展到今天 ARM的Cortex 家族大放异彩，当前 Cortex家族按CPU架构可以分为Cortex-A、Cortex-R、Cortex-M三个系列，其中A系列主要用在智能移动终端、PC、服务器，Cortex-R系列主要用在汽车电子等高精度嵌入式领域，而Cortex-M系列主要是MCU（单片机）用在低端嵌入式领域。</div><h2 id="3-3-x86和ARM的对决"><a href="#3-3-x86和ARM的对决" class="headerlink" title="3.3 x86和ARM的对决"></a>3.3 x86和ARM的对决</h2><div class="markdown-body">&emsp;&emsp;x86在架构上属于复杂指令集，其在PC和服务器领域的性能有着无可匹敌的优势，其Soc内部各模块设计复杂，相互耦合性高，片内、片外各总线数据传输性能优秀。ARM属于精简指令集架构，在嵌入式领域已是绝对霸主，其指令集和架构有条件开源的模式使其生态迅速铺展，近些年ARM在着力提升单核性能，剑指PC和服务器市场。由于ARM采用开源生态，其CPU内各组件模块化，相互间耦合性比较小，便于各厂商DIY，减小开发难度，但也因此会在性能存在瓶颈。&emsp;&emsp;国际环境复杂多变，国内多厂商在进行ARM处理的研发，小生态已经形成，我们可以拭目以待。</div>]]></content>
+    
+    
+    <categories>
+      
+      <category>电子信息技术</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>CPU架构</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>电子信息技术（三）——数字电路</title>
+    <link href="/2022/02/06/%E7%94%B5%E5%AD%90%E4%BF%A1%E6%81%AF%E6%8A%80%E6%9C%AF%EF%BC%88%E4%B8%89%EF%BC%89%E2%80%94%E2%80%94%E6%95%B0%E5%AD%97%E7%94%B5%E8%B7%AF/"/>
+    <url>/2022/02/06/%E7%94%B5%E5%AD%90%E4%BF%A1%E6%81%AF%E6%8A%80%E6%9C%AF%EF%BC%88%E4%B8%89%EF%BC%89%E2%80%94%E2%80%94%E6%95%B0%E5%AD%97%E7%94%B5%E8%B7%AF/</url>
+    
+    <content type="html"><![CDATA[<h3 id="前言："><a href="#前言：" class="headerlink" title="前言："></a>前言：</h3><div class="markdown-body">&emsp;&emsp;通过上期对电子信息技术简史的回顾，大家应该对电子信息技术的技术发展脉络有了基本的了解，那这期我们了解一下数字电路。<br>&emsp;&emsp;不对啊，不应该先聊“电子信息技术（二）——模拟电路”么？<br>&emsp;&emsp;据我个人理解，模拟电路应该是数字电路的基础，但模拟电路水太深了，不敢在此班门弄斧，如果有模电的大牛，可以将“模拟电路”这章补上。<br>&emsp;&emsp;言归正传，数字电路是现代信息技术的基础，学过数字电路的小伙伴应该记得，数字电路知识体系比较庞大，在大学也是用两个学期才能学完，但今天我们主要了解如下几个概念：二进制、逻辑运算、组合逻辑电路、时序逻辑电路。<br></div><h2 id="一、二进制"><a href="#一、二进制" class="headerlink" title="一、二进制"></a>一、二进制</h2><div class="markdown-body">&emsp;&emsp;大家平时生活中接触的主要是十进制计数，即逢十进一，二进制计数同理，逢二进一。二进制数据是用0和1两个数码来表示的数。它的基数为2，进位规则是“逢二进一”，借位规则是“借一当二”。<br>&emsp;&emsp;将二进制引入电子技术可以说是一个开创性的杰作，我们了解半导体电路的高低电平有高低之分，二进制的引入就是将高电平抽象为二进制数1，将低电平抽象为0，从此电子技术进入数字电路时代，数字电路可以计算二进制数字，当今世界最复杂的数字电路当属CPU。<br></div><h2 id="二、逻辑运算"><a href="#二、逻辑运算" class="headerlink" title="二、逻辑运算"></a>二、逻辑运算</h2><div class="markdown-body">&emsp;&emsp;既然引进了二进制计数，那这些数据就需要进行计算，十进制数中常用的加、减、乘、除这些运算被称为算数运算，二级制数同样可以进行算数运算，但同事二进制为数据的逻辑运算带来了便利。<br>&emsp;&emsp;逻辑运算又称布尔运算， 用等式表示判断，把推理看作等式的变换。<br>表示方式：<br>&emsp;&emsp;&emsp;&emsp;&emsp;"∨" 表示"或"<br>&emsp;&emsp;&emsp;&emsp;&emsp;"∧" 表示"与"<br>&emsp;&emsp;&emsp;&emsp;&emsp;"┐"表示"非"<br>&emsp;&emsp;&emsp;&emsp;&emsp;"=" 表示"等价"<br>&emsp;&emsp;&emsp;&emsp;&emsp;1和0表示"真"和"假"<br>&emsp;&emsp;在逻辑代数中，有与、或、非三种基本逻辑运算。表示逻辑运算的方法有多种，如语句描述、逻辑代数式、真值表、卡诺图等。逻辑运算中有逻辑常量和逻辑变量两个概念，逻辑常量只有两个，即0和1，用来表示两个对立的逻辑状态。逻辑变量与普通代数一样，也可以用字母、符号、数字及其组合来表示，但它们之间有着本质区别，因为逻辑常量的取值只有两个，即0和1，而没有中间值。<br></div><h2 id="三、组合逻辑电路和时序逻辑电路"><a href="#三、组合逻辑电路和时序逻辑电路" class="headerlink" title="三、组合逻辑电路和时序逻辑电路"></a>三、组合逻辑电路和时序逻辑电路</h2><div class="markdown-body">&emsp;&emsp;数字电路根据逻辑功能的不同特点，可以分成两大类，一类叫组合逻辑电路（组合电路），另一类叫做时序逻辑电路（时序电路）。<br> </div><h3 id="3-1-组合电路"><a href="#3-1-组合电路" class="headerlink" title="3.1 组合电路"></a>3.1 组合电路</h3><div class="markdown-body">&emsp;&emsp;组合电路：输出值只与当时的输入值有关，即输出惟一地由当时的输入值决定。与电路原来的状态无关，电路没有记忆功能，输出状态随着输入状态的变化而变化，类似于电阻性电路。<br> 其逻辑函数见下图:</div><h4 id=""><a href="#" class="headerlink" title=""></a></h4><p><img src="/2022/02/06/%E7%94%B5%E5%AD%90%E4%BF%A1%E6%81%AF%E6%8A%80%E6%9C%AF%EF%BC%88%E4%B8%89%EF%BC%89%E2%80%94%E2%80%94%E6%95%B0%E5%AD%97%E7%94%B5%E8%B7%AF/%E7%BB%84%E5%90%88%E7%94%B5%E8%B7%AF.png" alt="组合电路"><br>其中，a1-an为输入变量，y1-ym为输出变量。组合逻辑电路的特点归纳如下:<br>① 输入、输出之间没有返馈延迟通道;<br>② 电路中无记忆单元。</p><h3 id="3-2-时序电路"><a href="#3-2-时序电路" class="headerlink" title="3.2 时序电路"></a>3.2 时序电路</h3><div class="markdown-body">&emsp;&emsp;时序电路：在逻辑功能上的特点是任意时刻的输出不仅取决于当时的输入信号，而且还取决于电路原来的状态，或者说，还与以前的输入有关，其相当于在组合逻辑的输入端加上了一个反馈输入，在其电路中有一个存储电路，其可以将输出的状态保持住。其结构形式见下图：</div><h4 id="-1"><a href="#-1" class="headerlink" title=""></a></h4><p><img src="/2022/02/06/%E7%94%B5%E5%AD%90%E4%BF%A1%E6%81%AF%E6%8A%80%E6%9C%AF%EF%BC%88%E4%B8%89%EF%BC%89%E2%80%94%E2%80%94%E6%95%B0%E5%AD%97%E7%94%B5%E8%B7%AF/%E6%97%B6%E5%BA%8F%E7%94%B5%E8%B7%AF.png" alt="时序电路"></p><h4 id="3-2-1-时序逻辑电路的组成："><a href="#3-2-1-时序逻辑电路的组成：" class="headerlink" title="3.2.1 时序逻辑电路的组成："></a>3.2.1 时序逻辑电路的组成：</h4><div class="markdown-body">1) 驱动方程:(激励方程) 很简单时可默认不写 。<br>&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;Y=F(X,Qn)<br>2) 状态方程：将触发器特征方程改造而成的触发器的次态输出Qn+1与现态输出Qn的关系。<br>&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;Qn+1=H(Z,Qn)<br>3) 输出方程：电路最终输出与触发器输出Qn的关系。<br>&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;Y=F(X,Qn)<br></div><div class="markdown-body">&emsp;&emsp;三种方程中，驱动方程、状态方程最重要，输出方程往往可以不要，因为电路简单时，触发器的输出Qn一般就是电路的最终输出。</div><h4 id="3-2-2-时序电路分类"><a href="#3-2-2-时序电路分类" class="headerlink" title="3.2.2 时序电路分类"></a>3.2.2 时序电路分类</h4><p>1）时序电路分为同步时序电路和异步时序电路：<br>同步时序电路：触发器状态的变化都是同一时钟操作下同时发生的。<br>异步时序电路：触发器状态的变化不是同时发生的。</p><p>2）时序电路分为米利（Mealy）型和摩尔（Moore）型：<br>米利型（Mealy）：输出信号取决于输入变量和存储电路的状态。<br>摩尔型（Moore）：输出信号仅仅取决于存储电路的状态。（摩尔型是米利型的特例而已）</p><p>引用：<br>[1]阎石，《数字电子技术基础 (第五版) 》，高等教育出版社</p>]]></content>
+    
+    
+    <categories>
+      
+      <category>电子信息技术</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>数字电路</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>电子信息技术（一）——简史</title>
+    <link href="/2022/02/06/%E7%94%B5%E5%AD%90%E4%BF%A1%E6%81%AF%E6%8A%80%E6%9C%AF%EF%BC%88%E4%B8%80%EF%BC%89%E2%80%94%E2%80%94%E7%AE%80%E5%8F%B2/"/>
+    <url>/2022/02/06/%E7%94%B5%E5%AD%90%E4%BF%A1%E6%81%AF%E6%8A%80%E6%9C%AF%EF%BC%88%E4%B8%80%EF%BC%89%E2%80%94%E2%80%94%E7%AE%80%E5%8F%B2/</url>
+    
+    <content type="html"><![CDATA[<div class="markdown-body">&emsp;&emsp;电子信息技术的起源最早可追述到人类对自然界中“电”的探索与发现。<br>&emsp;&emsp;1752年美国科学家本杰明·富兰克林进行了著名的费城风筝实验，首次将自然界中的雷电通过导线引入莱顿瓶中。<br>&emsp;&emsp;1820年，丹麦科学家奥斯特将一根铂导线放在用玻璃罩着的小磁针上方接通电源，磁针跳动了一下，进而发现电流的磁效应。<br>&emsp;&emsp;1831年，英国物理学家迈克尔·法拉第发现了电磁感应现象，并把磁产生电的现象称为“电磁感应”。<br>&emsp;&emsp;1852年，德国物理学家欧姆研究探讨了电流产生磁力的衰减与导线长度的关系，进而推导出欧姆定律：即通过某段导体的电流跟这段导体两端的电压成正比，跟这段导体的电阻成反比。其中电压和电流之间的比例系数被称作”电阻“，表示导体对电荷的流动所呈现的”阻力“。<br>&emsp;&emsp;随后，英国物理学家詹姆斯·克拉克·麦克斯韦提出了著名的麦克斯韦方程组，预言了电磁波的存在。<br>&emsp;&emsp;1873年，德国物理学家赫兹首次用实验证明了电磁波的存在，并在1889年提出光是一种电磁现象。<br>&emsp;&emsp;1896年，意大利无线电工程师伽利尔摩·马可尼首次通过电磁波传递信息。<br>&emsp;&emsp;1897年，英国科学家汤姆孙通过实验发现了一种带负电的”粒子“，并称之为”电子“，随之拉开电子研究的序幕。<br>&emsp;&emsp;1904年，英国工程师弗莱明发明了人类第一只电子管，标志着人类进入了电子文明时代。随后出现的真空二极管、真空三极管使得无线电广播迅速发展，进而出现无线电报、收音机等无线通信设备。<br>&emsp;&emsp;二战结束后，为了克服电子管得局限性，贝尔实验室加紧了对固体电子器件得基础研究，1945年，贝尔实验室成立了以肖克莱、J.巴丁、W.H.布喇顿为核心的固体物理学研究小组， 1947年12月23日发明点接触晶体管。1949年肖克莱提出结型晶体管理论 ，1950年由贝尔电话实验室M.斯帕克斯和G.L.皮尔逊制出结型晶体管。晶体管得发明为集成电路出现的创造了条件，奠定的现代电子技术的基础，拉开了微电子技术和信息化时代的序幕，开创了电子信息的硅文明时代。<br>&emsp;&emsp;1958年，美国德州仪器公司首次在一块玻璃板上焊接锗晶体管芯片等元件，成功研究出世界上第一块集成电路：微小型锗振荡器。<br>&emsp;&emsp;1961年集成电路开始可以批量生产。<br>&emsp;&emsp;20世纪60年代初，一块硅片可以集成几十个元器件；20世纪70年代后期，一块30平方mm的硅片已经可以集成13万个晶体管；20实际90年代以来，超大规模集成电路迅速发展，集成电路工艺也在飞速更迭；到目前的2021年，5纳米光刻技术已经实现量产。<br>&emsp;&emsp;但当前集成电路也遇到一些发展瓶颈，想要实现更高的集成度变得越来越困难，因此在实体方向在研究新的半导体材料，以求达到更好的电气特性，在逻辑方向，量子计算机也不断出现一些研究成果。<br><br>&emsp;&emsp;后记：冰冻三尺非一日之寒，千里之行始于足下，电子技术的发展经历无数代先贤艰苦探索与实践，才达到今天的成果，之所以想以这样一篇电子技术简史开篇，是要警戒自己，要尊重科学，敬畏科学。有幸生在这个时代，能站在巨人的肩膀上，是何其幸运。生命不息，学习不止，与君共勉！<br></div>]]></content>
+    
+    
+    <categories>
+      
+      <category>电子信息技术</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>简史</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>写给将要出生的你</title>
+    <link href="/2022/02/05/%E5%86%99%E7%BB%99%E5%B0%86%E8%A6%81%E5%87%BA%E7%94%9F%E7%9A%84%E4%BD%A0/"/>
+    <url>/2022/02/05/%E5%86%99%E7%BB%99%E5%B0%86%E8%A6%81%E5%87%BA%E7%94%9F%E7%9A%84%E4%BD%A0/</url>
+    
+    <content type="html"><![CDATA[<div class="markdown-body">&emsp;&emsp;宝贝，再有2个月你就要出生了，爸爸和妈妈第一次写信给你，也是爸爸妈妈送你的以第一个礼物，希望在将来某一天你会自己看到，嘿嘿！<br>&emsp;&emsp;自从知道了你的到来，爸爸妈妈从惊喜到懵懂，从懵懂到喜悦，从喜悦变得小心翼翼，爸爸开始考虑你的未来，妈妈开启了陪伴你的每个日夜。孕早期，妈妈有很多孕反，经常吃不下东西，晚上也睡不好。由于体内激素的不稳定，妈妈皮肤开始变得粗糙，即使这样，一向爱美的妈妈坚持不再化妆。<br>&emsp;&emsp;孕中期，你开始有了胎动，比好多宝宝动的都早，但是这个时期的你动的没有规律，引得此时神经敏感的妈妈天天给你测胎心。做四维时，你不是很听话，总是趴着，妈妈前后照了四次，折腾了一上午，但当第一次看到你的模样时，爸爸和妈妈的心都融化了，看看你圆嘟嘟的小脸，妈妈说你长得像我，嘿嘿。过去的这8个月，是艰苦的8个月，妈妈独自承担了太多太多，爸爸因为工作原因不能陪在你和妈妈身边照顾你们，幸亏有姥姥和小姨承担了好多本来由爸爸该承担的责任，爸爸不是一个称职的爸爸，妈妈是一个很坚强的妈妈。<br>&emsp;&emsp;现在孕晚期，你在妈妈肚子里越来越大，妈妈现在生活太困难了，晚上经常一宿一宿睡不着。为了迎接你的出生，妈妈已经把你出生后的用到的东西都买了：包被、睡衣、纸尿裤、和尚服...，如数家珍。<br>&emsp;&emsp;想到将要出生的你，爸爸妈妈充满了期待，我们在想你是长得像爸爸还是像妈妈，不管像谁，你都应该是一个颜值很高的萌宝宝，哈哈！爸爸妈妈很期待你的出生，很期待你慢慢长大。爸爸想和你一起去球场打篮球，妈妈就在旁边看着。爸爸想带你去学吉他，去喊出青春的肆意。爸爸想带你去参加开源技术大会，让你感受那群有意思人在玩什么。<br>&emsp;&emsp;宝贝，感谢你的到来，让爸爸妈妈的人生变得更有意义了。爸爸会学着做一个好爸爸，妈妈肯定是一个好妈妈,你也肯定是一个好宝宝，咱们一家共同成长。<br><br>爱你的爸爸妈妈<br>2022.02.05</div>]]></content>
+    
+    
+    <categories>
+      
+      <category>予吾儿澂书</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>予吾儿澂书</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>Hexo:Hello World</title>
+    <link href="/2019/10/10/hello-world/"/>
+    <url>/2019/10/10/hello-world/</url>
+    
+    <content type="html"><![CDATA[<p>Welcome to <a href="https://hexo.io/">Hexo</a>! This is your very first post. Check <a href="https://hexo.io/docs/">documentation</a> for more info. If you get any problems when using Hexo, you can find the answer in <a href="https://hexo.io/docs/troubleshooting.html">troubleshooting</a> or you can ask me on <a href="https://github.com/hexojs/hexo/issues">GitHub</a>.</p><h2 id="Quick-Start"><a href="#Quick-Start" class="headerlink" title="Quick Start"></a>Quick Start</h2><h3 id="Create-a-new-post"><a href="#Create-a-new-post" class="headerlink" title="Create a new post"></a>Create a new post</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs bash">$ hexo new <span class="hljs-string">&quot;My New Post&quot;</span><br></code></pre></td></tr></table></figure><p>More info: <a href="https://hexo.io/docs/writing.html">Writing</a></p><h3 id="Run-server"><a href="#Run-server" class="headerlink" title="Run server"></a>Run server</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs bash">$ hexo server<br></code></pre></td></tr></table></figure><p>More info: <a href="https://hexo.io/docs/server.html">Server</a></p><h3 id="Generate-static-files"><a href="#Generate-static-files" class="headerlink" title="Generate static files"></a>Generate static files</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs bash">$ hexo generate<br></code></pre></td></tr></table></figure><p>More info: <a href="https://hexo.io/docs/generating.html">Generating</a></p><h3 id="Deploy-to-remote-sites"><a href="#Deploy-to-remote-sites" class="headerlink" title="Deploy to remote sites"></a>Deploy to remote sites</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs bash">$ hexo deploy<br></code></pre></td></tr></table></figure><p>More info: <a href="https://hexo.io/docs/one-command-deployment.html">Deployment</a></p>]]></content>
+    
+    
+    <categories>
+      
+      <category>Hexo</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>Hexo</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  
+</search>
