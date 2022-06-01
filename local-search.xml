@@ -122,9 +122,9 @@
     
     <tags>
       
-      <tag>嵌入式</tag>
-      
       <tag>嵌入式linux</tag>
+      
+      <tag>嵌入式</tag>
       
     </tags>
     
@@ -479,6 +479,33 @@
     <tags>
       
       <tag>网络设备</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>u-boot 2016.7之以太网驱动模型</title>
+    <link href="/2017/05/18/u-boot%202016.7%E4%B9%8B%E4%BB%A5%E5%A4%AA%E7%BD%91%E9%A9%B1%E5%8A%A8%E6%A8%A1%E5%9E%8B/"/>
+    <url>/2017/05/18/u-boot%202016.7%E4%B9%8B%E4%BB%A5%E5%A4%AA%E7%BD%91%E9%A9%B1%E5%8A%A8%E6%A8%A1%E5%9E%8B/</url>
+    
+    <content type="html"><![CDATA[<!--more--><h1 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h1><p>        u-boot 2016.7引入了设备树（device tree） 和 驱动模型DM（driver model），这为设备的驱动的定义和访问接口提供了统一的方法，提高了驱动之间的兼容性和可移植性。具体建议参考&#x2F;doc&#x2F;driver-model&#x2F;README.txt。</p><p>        对于u-boot2016.7的以太网络驱动，也属于DM应用的一个范例，此篇着重介绍u-boot2016.7的DM 模型及网络驱动模型的细节，关于设备树（device tree）的相关细节，在后续篇章中进行介绍。</p><h1 id="1、使能DM功能"><a href="#1、使能DM功能" class="headerlink" title="1、使能DM功能"></a>1、使能DM功能</h1><p>在配置u-boot时，使能DM功能，即在&#x2F;configs&#x2F;xxx_defconfig中定义了：CONFIG_DM&#x3D;y；</p><p>在配置u-boot时，使能网络设备的DM功能，即在&#x2F;configs&#x2F;xxx_defconfig中定义了：CONFIG_DM_NET&#x3D;y； </p><h1 id="2、DM整体框架"><a href="#2、DM整体框架" class="headerlink" title="2、DM整体框架"></a>2、DM整体框架</h1><p>      DM 主要有udevice、dirver、uclass、uclass_dirver四部分组成，其中：</p><p>udevice：是指设备对象，类似可以理解为kernel中的device。</p><p>dirver：是udevice的驱动，和底层硬件设备通信，并且为上层提供设备操作接口。</p><p>uclass：使用相同方式的操作集的device的组。相当于是一种抽象。uclass为使用相同接口的设备提供了统一的接口。</p><p>uclass_dirver：对应uclass的驱动程序。主要提供uclass操作时，如bind和probe  udevice时的一些操作。 </p><p>其调用关系见图1：</p><p><img src="/2017/05/18/u-boot%202016.7%E4%B9%8B%E4%BB%A5%E5%A4%AA%E7%BD%91%E9%A9%B1%E5%8A%A8%E6%A8%A1%E5%9E%8B/1.bmp" alt="图1"></p><h1 id="3、数据结构和dirver声名"><a href="#3、数据结构和dirver声名" class="headerlink" title="3、数据结构和dirver声名"></a>3、数据结构和dirver声名</h1><p>      DM 主要有udevice、dirver、uclass、uclass_dirver四部分组成，相应与之对应的有四个数据结构struct udevice、struct dirver、struct uclass、struct uclass_dirver。</p><p>对于dirver和uclass_dirver的声明，u-boot提供了： </p><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><code class="hljs c">  U_BOOT_DRIVER(xxx_gmac) = &#123;<br>    .name    = <span class="hljs-string">&quot;xxx_gmac&quot;</span>,  <br>    .id    = UCLASS_ETH,  <br>    .of_match = xxx_gmac_ids,  <br>    .ofdata_to_platdata = xxx_gmac_ofdata_to_platdata,  <br>    .probe    = xxx_gmac_probe,  <br>    .remove    = xxxgemac_remove,  <br>    .ops    = &amp;xxx_gmac_ops,  <br>    .priv_auto_alloc_size = <span class="hljs-keyword">sizeof</span>(<span class="hljs-keyword">struct</span> xxx_priv),  <br>    .platdata_auto_alloc_size = <span class="hljs-keyword">sizeof</span>(<span class="hljs-keyword">struct</span> eth_pdata),  <br>  &#125;;<br></code></pre></td></tr></table></figure><p>和 </p><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><code class="hljs c">UCLASS_DRIVER(eth) = &#123;  <br>    .name        = <span class="hljs-string">&quot;eth&quot;</span>,  <br>    .id        = UCLASS_ETH,  <br>    .post_bind    = eth_post_bind,  <br>    .pre_unbind    = eth_pre_unbind,  <br>    .post_probe    = eth_post_probe,  <br>    .pre_remove    = eth_pre_remove,  <br>    .priv_auto_alloc_size = <span class="hljs-keyword">sizeof</span>(<span class="hljs-keyword">struct</span> eth_uclass_priv),  <br>    .per_device_auto_alloc_size = <span class="hljs-keyword">sizeof</span>(<span class="hljs-keyword">struct</span> eth_device_priv),  <br>    .flags        = DM_UC_FLAG_SEQ_ALIAS,  <br>  &#125;;<br></code></pre></td></tr></table></figure><h1 id="4、u-boot-2016-7网络驱动模型"><a href="#4、u-boot-2016-7网络驱动模型" class="headerlink" title="4、u-boot 2016.7网络驱动模型"></a>4、u-boot 2016.7网络驱动模型</h1><p>      一般以太网的硬件原理框图见图2：<br><img src="/2017/05/18/u-boot%202016.7%E4%B9%8B%E4%BB%A5%E5%A4%AA%E7%BD%91%E9%A9%B1%E5%8A%A8%E6%A8%A1%E5%9E%8B/2.bmp" alt=" 图2"></p><p>      以太网的网络驱动模型是DM模型的具体体现，其模型框图见图3：<br><img src="/2017/05/18/u-boot%202016.7%E4%B9%8B%E4%BB%A5%E5%A4%AA%E7%BD%91%E9%A9%B1%E5%8A%A8%E6%A8%A1%E5%9E%8B/3.bmp" alt="图3"> </p><h1 id="5、u-boot-2016-7网络初始化流程"><a href="#5、u-boot-2016-7网络初始化流程" class="headerlink" title="5、u-boot 2016.7网络初始化流程"></a>5、u-boot 2016.7网络初始化流程</h1><p>     u-boot 2016.7的网络初始化流程见图4：   <br><img src="/2017/05/18/u-boot%202016.7%E4%B9%8B%E4%BB%A5%E5%A4%AA%E7%BD%91%E9%A9%B1%E5%8A%A8%E6%A8%A1%E5%9E%8B/4.png" alt="图4"><br>                                                               <br>      其中xxx_gmac.c和xxx_phy_device.c是硬件平台相关的文件，xxx_gmac.c提供了gmac的对gmac的初始化和对gmac的操作接口及对phy芯片的配置，xxx_phy_device.c提供phy芯片的操作接口以及向u-boot注册phy设备。</p><p>      当把u-boot移植到新平台或新的板级平台时，若u-boot中没有集成相应的mac控制器驱动或phy芯片驱动时，需手动完成xxx_gmac.c和xxx_phy_device.c并添加。</p>]]></content>
+    
+    
+    <categories>
+      
+      <category>嵌入式软件开发</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>嵌入式linux</tag>
+      
+      <tag>uboot</tag>
       
     </tags>
     

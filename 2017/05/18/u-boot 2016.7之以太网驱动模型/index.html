@@ -16,27 +16,27 @@
   <meta name="author" content="Leo Hou">
   <meta name="keywords" content="">
   
-    <meta name="description" content="上一节聊到裸机程序开发，虽然通过一些操作系统的思想可以有条件的实现受限多任务，但裸机程序仍然无法高效的实现多任务处理。">
+    <meta name="description" content="u-boot 2016.7引入了设备树（device tree） 和 驱动模型DM（driver model），这为设备的驱动的定义和访问">
 <meta property="og:type" content="article">
-<meta property="og:title" content="嵌入式软件开发（三）——嵌入式linux系统">
-<meta property="og:url" content="https://leo-hou.github.io/2022/02/15/%E5%B5%8C%E5%85%A5%E5%BC%8F%E8%BD%AF%E4%BB%B6%E5%BC%80%E5%8F%91%EF%BC%88%E4%B8%89%EF%BC%89%E2%80%94%E2%80%94%E5%B5%8C%E5%85%A5%E5%BC%8Flinux%E7%B3%BB%E7%BB%9F/index.html">
+<meta property="og:title" content="u-boot 2016.7之以太网驱动模型">
+<meta property="og:url" content="https://leo-hou.github.io/2017/05/18/u-boot%202016.7%E4%B9%8B%E4%BB%A5%E5%A4%AA%E7%BD%91%E9%A9%B1%E5%8A%A8%E6%A8%A1%E5%9E%8B/index.html">
 <meta property="og:site_name" content="Leo Hou">
-<meta property="og:description" content="上一节聊到裸机程序开发，虽然通过一些操作系统的思想可以有条件的实现受限多任务，但裸机程序仍然无法高效的实现多任务处理。">
+<meta property="og:description" content="u-boot 2016.7引入了设备树（device tree） 和 驱动模型DM（driver model），这为设备的驱动的定义和访问">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="https://leo-hou.github.io/img/post/%E5%B5%8C%E5%85%A5%E5%BC%8Flinux/%E5%B5%8C%E5%85%A5%E5%BC%8Flinux.jpg">
-<meta property="article:published_time" content="2022-02-15T12:38:46.000Z">
-<meta property="article:modified_time" content="2022-05-28T11:14:15.000Z">
+<meta property="og:image" content="https://leo-hou.github.io/img/post/uboot%E4%BB%A5%E5%A4%AA%E7%BD%91/uboot.jpg">
+<meta property="article:published_time" content="2017-05-18T06:42:11.000Z">
+<meta property="article:modified_time" content="2022-06-01T16:12:33.350Z">
 <meta property="article:author" content="Leo Hou">
 <meta property="article:tag" content="嵌入式linux">
-<meta property="article:tag" content="嵌入式">
+<meta property="article:tag" content="uboot">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="https://leo-hou.github.io/img/post/%E5%B5%8C%E5%85%A5%E5%BC%8Flinux/%E5%B5%8C%E5%85%A5%E5%BC%8Flinux.jpg">
+<meta name="twitter:image" content="https://leo-hou.github.io/img/post/uboot%E4%BB%A5%E5%A4%AA%E7%BD%91/uboot.jpg">
   
   
     <meta name="referrer" content="no-referrer-when-downgrade">
   
   
-  <title>嵌入式软件开发（三）——嵌入式linux系统 - Leo Hou</title>
+  <title>u-boot 2016.7之以太网驱动模型 - Leo Hou</title>
 
   <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
 
@@ -199,7 +199,7 @@
       <div class="banner-text text-center fade-in-up">
         <div class="h2">
           
-            <span id="subtitle" data-typed-text="嵌入式软件开发（三）——嵌入式linux系统"></span>
+            <span id="subtitle" data-typed-text="u-boot 2016.7之以太网驱动模型"></span>
           
         </div>
 
@@ -210,8 +210,8 @@
     
       <span class="post-meta">
         <i class="iconfont icon-date-fill" aria-hidden="true"></i>
-        <time datetime="2022-02-15 20:38" pubdate>
-          2022年2月15日 晚上
+        <time datetime="2017-05-18 14:42" pubdate>
+          2017年5月18日 下午
         </time>
       </span>
     
@@ -223,7 +223,7 @@
         <i class="iconfont icon-chart"></i>
         
           <!-- compatible with older versions-->
-          1.2k 字
+          1.8k 字
         
       </span>
     
@@ -235,7 +235,7 @@
         
         
           <!-- compatible with older versions-->
-          11 分钟
+          16 分钟
         
       </span>
     
@@ -281,33 +281,34 @@
         <div id="board">
           <article class="post-content mx-auto">
             <!-- SEO header -->
-            <h1 style="display: none">嵌入式软件开发（三）——嵌入式linux系统</h1>
+            <h1 style="display: none">u-boot 2016.7之以太网驱动模型</h1>
             
             <div class="markdown-body">
               
-              <h2 id="前言："><a href="#前言：" class="headerlink" title="前言："></a>前言：</h2><div class="markdown-body">
-&emsp;&emsp;上一节聊到裸机程序开发，虽然通过一些操作系统的思想可以有条件的实现受限多任务，但裸机程序仍然无法高效的实现多任务处理。操作系统引入可以很好的解决这个问题，不止如此，操作系统还可以管理处理器资源、管理系统存储资源、管理系统外设及提供操作系统与用户之间的接口。综合来说操作系统就是管理系统的软、硬件资源，向下驱动硬件设备,向上为用户提供调用接口的一套管理机制。本节主要介绍嵌入式linux系统的组成。</div>
+              <!--more-->
 
-<h1 id="一、嵌入式linux系统的启动流程"><a href="#一、嵌入式linux系统的启动流程" class="headerlink" title="一、嵌入式linux系统的启动流程"></a>一、嵌入式linux系统的启动流程</h1><div class="markdown-body">
-&emsp;&emsp;通过前面章节我们了解到，CPU的运行过程就是获取软件指令并执行的过程，操作系统本质上也是一种软件，所以操作系统的启动过程也是CPU启动、运行的过程。此处以AARCH64架构CPU为例，嵌入式Linux启动流程主要分3部分：CPU片内firmware、boot loader（此处以u-boot为例）、linux系统，见下图：</div>
+<h1 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h1><p>        u-boot 2016.7引入了设备树（device tree） 和 驱动模型DM（driver model），这为设备的驱动的定义和访问接口提供了统一的方法，提高了驱动之间的兼容性和可移植性。具体建议参考&#x2F;doc&#x2F;driver-model&#x2F;README.txt。</p>
+<p>        对于u-boot2016.7的以太网络驱动，也属于DM应用的一个范例，此篇着重介绍u-boot2016.7的DM 模型及网络驱动模型的细节，关于设备树（device tree）的相关细节，在后续篇章中进行介绍。</p>
+<h1 id="1、使能DM功能"><a href="#1、使能DM功能" class="headerlink" title="1、使能DM功能"></a>1、使能DM功能</h1><p>在配置u-boot时，使能DM功能，即在&#x2F;configs&#x2F;xxx_defconfig中定义了：CONFIG_DM&#x3D;y；</p>
+<p>在配置u-boot时，使能网络设备的DM功能，即在&#x2F;configs&#x2F;xxx_defconfig中定义了：CONFIG_DM_NET&#x3D;y； </p>
+<h1 id="2、DM整体框架"><a href="#2、DM整体框架" class="headerlink" title="2、DM整体框架"></a>2、DM整体框架</h1><p>      DM 主要有udevice、dirver、uclass、uclass_dirver四部分组成，其中：</p>
+<p>udevice：是指设备对象，类似可以理解为kernel中的device。</p>
+<p>dirver：是udevice的驱动，和底层硬件设备通信，并且为上层提供设备操作接口。</p>
+<p>uclass：使用相同方式的操作集的device的组。相当于是一种抽象。uclass为使用相同接口的设备提供了统一的接口。</p>
+<p>uclass_dirver：对应uclass的驱动程序。主要提供uclass操作时，如bind和probe  udevice时的一些操作。 </p>
+<p>其调用关系见图1：</p>
+<p><img src="/2017/05/18/u-boot%202016.7%E4%B9%8B%E4%BB%A5%E5%A4%AA%E7%BD%91%E9%A9%B1%E5%8A%A8%E6%A8%A1%E5%9E%8B/1.bmp" srcset="/img/loading.gif" lazyload alt="图1"></p>
+<h1 id="3、数据结构和dirver声名"><a href="#3、数据结构和dirver声名" class="headerlink" title="3、数据结构和dirver声名"></a>3、数据结构和dirver声名</h1><p>      DM 主要有udevice、dirver、uclass、uclass_dirver四部分组成，相应与之对应的有四个数据结构struct udevice、struct dirver、struct uclass、struct uclass_dirver。</p>
+<p>对于dirver和uclass_dirver的声明，u-boot提供了： </p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><code class="hljs c">  U_BOOT_DRIVER(xxx_gmac) = &#123;<br>    .name    = <span class="hljs-string">&quot;xxx_gmac&quot;</span>,  <br>    .id    = UCLASS_ETH,  <br>    .of_match = xxx_gmac_ids,  <br>    .ofdata_to_platdata = xxx_gmac_ofdata_to_platdata,  <br>    .probe    = xxx_gmac_probe,  <br>    .remove    = xxxgemac_remove,  <br>    .ops    = &amp;xxx_gmac_ops,  <br>    .priv_auto_alloc_size = <span class="hljs-keyword">sizeof</span>(<span class="hljs-keyword">struct</span> xxx_priv),  <br>    .platdata_auto_alloc_size = <span class="hljs-keyword">sizeof</span>(<span class="hljs-keyword">struct</span> eth_pdata),  <br>  &#125;;<br></code></pre></td></tr></table></figure>
 
-<h4 id=""><a href="#" class="headerlink" title=""></a></h4><p><img src="/2022/02/15/%E5%B5%8C%E5%85%A5%E5%BC%8F%E8%BD%AF%E4%BB%B6%E5%BC%80%E5%8F%91%EF%BC%88%E4%B8%89%EF%BC%89%E2%80%94%E2%80%94%E5%B5%8C%E5%85%A5%E5%BC%8Flinux%E7%B3%BB%E7%BB%9F/emb_sys1.png" srcset="/img/loading.gif" lazyload alt="图1.1"></p>
-<div class="markdown-body">
-&emsp;&emsp;firmware一般为CPU厂家在出厂时烧写的固件程序，其功能主要是CPU的初始化及CPU启动方式功能的实现，此部分视CPU厂家不同，实现的功能也不尽相同，有的CPU厂家就没有这部分，但有些NXP的CPU，通过CPU管教配置决定开发板是通过什么方式启动（Flash启动、SD卡启动、USB启动甚至网络启动），这个firmware就是要实现相应启动方式的硬件设备驱动及程序代码的拷贝。
-&emsp;&emsp;U-boot是boot loader的一种，是操作系统的引导程序，其主要作用可以分为三部分：CPU初始化、板级设备初始化、引导操作系统内核。U-boot本质上是一段裸机程序，按流程依次实现上述功能。
-&emsp;&emsp;Linux系统主要有两部分组成：linux kernel、filesystem，启动时先要启动内核，然后挂载根文件系统rootfs，然后再运行一系列应用进程。嵌入式系统中根文件系统的制作可以采用busybox。
-</div>
+<p>和 </p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><code class="hljs c">UCLASS_DRIVER(eth) = &#123;  <br>    .name        = <span class="hljs-string">&quot;eth&quot;</span>,  <br>    .id        = UCLASS_ETH,  <br>    .post_bind    = eth_post_bind,  <br>    .pre_unbind    = eth_pre_unbind,  <br>    .post_probe    = eth_post_probe,  <br>    .pre_remove    = eth_pre_remove,  <br>    .priv_auto_alloc_size = <span class="hljs-keyword">sizeof</span>(<span class="hljs-keyword">struct</span> eth_uclass_priv),  <br>    .per_device_auto_alloc_size = <span class="hljs-keyword">sizeof</span>(<span class="hljs-keyword">struct</span> eth_device_priv),  <br>    .flags        = DM_UC_FLAG_SEQ_ALIAS,  <br>  &#125;;<br></code></pre></td></tr></table></figure>
 
-<h1 id="二、嵌入式Linux系统架构"><a href="#二、嵌入式Linux系统架构" class="headerlink" title="二、嵌入式Linux系统架构"></a>二、嵌入式Linux系统架构</h1><div class="markdown-body">
-&emsp;&emsp;嵌入式linux系统相对于通用计算机系统的桌面linux系统，其基本架构一致，但组件比桌面系统要少，前面我们了解嵌入式系统是软、硬件可裁剪，Linux系统的可裁剪特性完美切合了嵌入式系统的需求，所以在嵌入式系统中选择嵌入式Linux系统在系统裁剪方面有着先天优势，同时linux的系统调用遵循posix规范，方便Linux系统的应用在嵌入式系统中移植、适配。下图是嵌入式linux系统的整体结构图：</div>
-
-<h4 id="-1"><a href="#-1" class="headerlink" title=""></a></h4><p><img src="/2022/02/15/%E5%B5%8C%E5%85%A5%E5%BC%8F%E8%BD%AF%E4%BB%B6%E5%BC%80%E5%8F%91%EF%BC%88%E4%B8%89%EF%BC%89%E2%80%94%E2%80%94%E5%B5%8C%E5%85%A5%E5%BC%8Flinux%E7%B3%BB%E7%BB%9F/emb_sys2.png" srcset="/img/loading.gif" lazyload alt="图2.1"></p>
-<div class="markdown-body">
-&emsp;&emsp;嵌入式Linux系统主要由用户态应用程序APP和内核组成，内核大方向上分两层：内核组件和设备驱动。用户态APP通过系统调用与内核态的设备驱动程序进行交互，由驱动程序对外设进行控制，协调外设工作。<br>
-
-<h1 id="三、结束语"><a href="#三、结束语" class="headerlink" title="三、结束语"></a>三、结束语</h1><div class="markdown-body">
-&emsp;&emsp;至此，嵌入式部分的内容基本就分享完了，后续章节将着重探讨linux驱动程序开发及内核分析。
-<div>
+<h1 id="4、u-boot-2016-7网络驱动模型"><a href="#4、u-boot-2016-7网络驱动模型" class="headerlink" title="4、u-boot 2016.7网络驱动模型"></a>4、u-boot 2016.7网络驱动模型</h1><p>      一般以太网的硬件原理框图见图2：<br><img src="/2017/05/18/u-boot%202016.7%E4%B9%8B%E4%BB%A5%E5%A4%AA%E7%BD%91%E9%A9%B1%E5%8A%A8%E6%A8%A1%E5%9E%8B/2.bmp" srcset="/img/loading.gif" lazyload alt=" 图2"></p>
+<p>      以太网的网络驱动模型是DM模型的具体体现，其模型框图见图3：<br><img src="/2017/05/18/u-boot%202016.7%E4%B9%8B%E4%BB%A5%E5%A4%AA%E7%BD%91%E9%A9%B1%E5%8A%A8%E6%A8%A1%E5%9E%8B/3.bmp" srcset="/img/loading.gif" lazyload alt="图3"> </p>
+<h1 id="5、u-boot-2016-7网络初始化流程"><a href="#5、u-boot-2016-7网络初始化流程" class="headerlink" title="5、u-boot 2016.7网络初始化流程"></a>5、u-boot 2016.7网络初始化流程</h1><p>     u-boot 2016.7的网络初始化流程见图4：   <br><img src="/2017/05/18/u-boot%202016.7%E4%B9%8B%E4%BB%A5%E5%A4%AA%E7%BD%91%E9%A9%B1%E5%8A%A8%E6%A8%A1%E5%9E%8B/4.png" srcset="/img/loading.gif" lazyload alt="图4"><br>                                                               <br>      其中xxx_gmac.c和xxx_phy_device.c是硬件平台相关的文件，xxx_gmac.c提供了gmac的对gmac的初始化和对gmac的操作接口及对phy芯片的配置，xxx_phy_device.c提供phy芯片的操作接口以及向u-boot注册phy设备。</p>
+<p>      当把u-boot移植到新平台或新的板级平台时，若u-boot中没有集成相应的mac控制器驱动或phy芯片驱动时，需手动完成xxx_gmac.c和xxx_phy_device.c并添加。</p>
 
               
             </div>
@@ -342,7 +343,7 @@
       
         <a href="/tags/%E5%B5%8C%E5%85%A5%E5%BC%8Flinux/">#嵌入式linux</a>
       
-        <a href="/tags/%E5%B5%8C%E5%85%A5%E5%BC%8F/">#嵌入式</a>
+        <a href="/tags/uboot/">#uboot</a>
       
     </div>
   
@@ -354,8 +355,8 @@
 
   <div class="license-box my-3">
     <div class="license-title">
-      <div>嵌入式软件开发（三）——嵌入式linux系统</div>
-      <div>https://leo-hou.github.io/2022/02/15/嵌入式软件开发（三）——嵌入式linux系统/</div>
+      <div>u-boot 2016.7之以太网驱动模型</div>
+      <div>https://leo-hou.github.io/2017/05/18/u-boot 2016.7之以太网驱动模型/</div>
     </div>
     <div class="license-meta">
       
@@ -367,7 +368,7 @@
       
         <div class="license-meta-item license-meta-date">
           <div>发布于</div>
-          <div>2022年2月15日</div>
+          <div>2017年5月18日</div>
         </div>
       
       
@@ -409,21 +410,15 @@
                   <article class="post-prev col-6">
                     
                     
-                      <a href="/2022/02/16/Linux%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91%EF%BC%88%E4%B8%80%EF%BC%89%E2%80%94%E2%80%94%E9%A9%B1%E5%8A%A8%E4%BD%95%E4%B8%BA/" title="Linux驱动开发（一）——驱动何为">
+                      <a href="/2017/07/25/Linux4.6.0%E4%B8%8B%E7%9A%84%E7%BD%91%E7%BB%9C%E8%AE%BE%E5%A4%87%E9%A9%B1%E5%8A%A8/" title="Linux4.6.0下的网络设备驱动">
                         <i class="iconfont icon-arrowleft"></i>
-                        <span class="hidden-mobile">Linux驱动开发（一）——驱动何为</span>
+                        <span class="hidden-mobile">Linux4.6.0下的网络设备驱动</span>
                         <span class="visible-mobile">上一篇</span>
                       </a>
                     
                   </article>
                   <article class="post-next col-6">
                     
-                    
-                      <a href="/2022/02/15/%E5%B5%8C%E5%85%A5%E5%BC%8F%E8%BD%AF%E4%BB%B6%E5%BC%80%E5%8F%91%EF%BC%88%E4%BA%8C%EF%BC%89%E2%80%94%E2%80%94%E8%A3%B8%E6%9C%BA%E7%A8%8B%E5%BA%8F%E5%BC%80%E5%8F%91/" title="嵌入式软件开发（二）——裸机程序开发">
-                        <span class="hidden-mobile">嵌入式软件开发（二）——裸机程序开发</span>
-                        <span class="visible-mobile">下一篇</span>
-                        <i class="iconfont icon-arrowright"></i>
-                      </a>
                     
                   </article>
                 </div>
