@@ -16,26 +16,26 @@
   <meta name="author" content="Leo Hou">
   <meta name="keywords" content="">
   
-    <meta name="description" content="Linux下MMC&#x2F;SD驱动主要分三层：card层、core层、host层">
+    <meta name="description" content="CAN总线设备如果被抽象为网络设备，那也支持像ip这类网络工具，Socket CAN的工具集是Canutils，这些工具还没在arm64的平台上移植过，后面主要介绍上述工具在arm64平台的移植过程。">
 <meta property="og:type" content="article">
-<meta property="og:title" content="Linux MMC&#x2F;SD驱动开发">
-<meta property="og:url" content="https://leo-hou.github.io/2018/12/26/Linux%20MMC%20SD%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91/index.html">
+<meta property="og:title" content="Linux Socket CAN——工具集嵌入式平台移植">
+<meta property="og:url" content="https://leo-hou.github.io/2022/06/02/Linux%20Socket%20CAN%E2%80%94%E2%80%94%E5%B7%A5%E5%85%B7%E9%9B%86%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%B9%B3%E5%8F%B0%E7%A7%BB%E6%A4%8D/index.html">
 <meta property="og:site_name" content="Leo Hou">
-<meta property="og:description" content="Linux下MMC&#x2F;SD驱动主要分三层：card层、core层、host层">
+<meta property="og:description" content="CAN总线设备如果被抽象为网络设备，那也支持像ip这类网络工具，Socket CAN的工具集是Canutils，这些工具还没在arm64的平台上移植过，后面主要介绍上述工具在arm64平台的移植过程。">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="https://leo-hou.github.io/img/post/mmc%20sd/mmc%20sd.jpeg">
-<meta property="article:published_time" content="2018-12-26T08:15:52.000Z">
-<meta property="article:modified_time" content="2022-06-02T00:53:12.588Z">
+<meta property="og:image" content="https://leo-hou.github.io/img/post/can%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91/can.png">
+<meta property="article:published_time" content="2022-06-02T04:14:54.000Z">
+<meta property="article:modified_time" content="2022-06-02T02:36:12.787Z">
 <meta property="article:author" content="Leo Hou">
-<meta property="article:tag" content="存储设备">
+<meta property="article:tag" content="网络设备">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="https://leo-hou.github.io/img/post/mmc%20sd/mmc%20sd.jpeg">
+<meta name="twitter:image" content="https://leo-hou.github.io/img/post/can%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91/can.png">
   
   
     <meta name="referrer" content="no-referrer-when-downgrade">
   
   
-  <title>Linux MMC/SD驱动开发 - Leo Hou</title>
+  <title>Linux Socket CAN——工具集嵌入式平台移植 - Leo Hou</title>
 
   <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
 
@@ -198,7 +198,7 @@
       <div class="banner-text text-center fade-in-up">
         <div class="h2">
           
-            <span id="subtitle" data-typed-text="Linux MMC/SD驱动开发"></span>
+            <span id="subtitle" data-typed-text="Linux Socket CAN——工具集嵌入式平台移植"></span>
           
         </div>
 
@@ -209,8 +209,8 @@
     
       <span class="post-meta">
         <i class="iconfont icon-date-fill" aria-hidden="true"></i>
-        <time datetime="2018-12-26 16:15" pubdate>
-          2018年12月26日 下午
+        <time datetime="2022-06-02 12:14" pubdate>
+          2022年6月2日 中午
         </time>
       </span>
     
@@ -222,7 +222,7 @@
         <i class="iconfont icon-chart"></i>
         
           <!-- compatible with older versions-->
-          734 字
+          1.9k 字
         
       </span>
     
@@ -234,7 +234,7 @@
         
         
           <!-- compatible with older versions-->
-          7 分钟
+          16 分钟
         
       </span>
     
@@ -280,25 +280,30 @@
         <div id="board">
           <article class="post-content mx-auto">
             <!-- SEO header -->
-            <h1 style="display: none">Linux MMC/SD驱动开发</h1>
+            <h1 style="display: none">Linux Socket CAN——工具集嵌入式平台移植</h1>
             
             <div class="markdown-body">
               
               <!--more-->
 
-<h1 id="一-、Linux-MMC-x2F-SD驱动模型分析"><a href="#一-、Linux-MMC-x2F-SD驱动模型分析" class="headerlink" title="一 、Linux MMC&#x2F;SD驱动模型分析"></a>一 、Linux MMC&#x2F;SD驱动模型分析</h1><p>        Linux下MMC&#x2F;SD驱动主要分三层：card层、core层、host层。Linux下MMC&#x2F;SD驱动框架见图1：</p>
-<p><img src="/2018/12/26/Linux%20MMC%20SD%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91/1.png" srcset="/img/loading.gif" lazyload alt=" 图1"></p>
-<p><strong>card层：</strong><br>要把操作的数据以块设备的处理方式写到记忆体上或从记忆体上读取。</p>
-<p><strong>core层：</strong><br>则是将数据以何种格式，何种方式在 MMC&#x2F;SD主机控制器与MMC&#x2F;SD卡的记忆体(即块设备)之间进行传递，这种格式、方式被称之为规范或协议。 </p>
-<p><strong>host层：</strong><br>就是要实现的具体MMC&#x2F;SD相应控制器的驱动程序，包括MMC&#x2F;SD控制器的初始化、寄存器读写及SD卡的命令、数据的传输接口。</p>
-<p>       当前新版内核已将card层和core层合并。</p>
-<h1 id="二-、Linux-MMC-x2F-SD驱动框架的重要数据结构"><a href="#二-、Linux-MMC-x2F-SD驱动框架的重要数据结构" class="headerlink" title="二 、Linux MMC&#x2F;SD驱动框架的重要数据结构"></a>二 、Linux MMC&#x2F;SD驱动框架的重要数据结构</h1><h2 id="2-1-struct-mmc-host-结构体"><a href="#2-1-struct-mmc-host-结构体" class="headerlink" title="2.1 struct mmc_host 结构体"></a>2.1 struct mmc_host 结构体</h2><p><img src="/2018/12/26/Linux%20MMC%20SD%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91/2.1.png" srcset="/img/loading.gif" lazyload></p>
-<p>struct mmc_host用于与core层的命令请求，数据 传输等信息。</p>
-<h2 id="2-2-struct-mmc-host-ops-结构体"><a href="#2-2-struct-mmc-host-ops-结构体" class="headerlink" title="2.2 struct mmc_host_ops 结构体"></a>2.2 struct mmc_host_ops 结构体</h2><p><img src="/2018/12/26/Linux%20MMC%20SD%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91/2.2.png" srcset="/img/loading.gif" lazyload></p>
-<p>       其中request 主要是SD卡命令数据传输操作入口，set_ios是配置SD控制器寄存器操作入口，是驱动中必须要实现的两个基本操作。</p>
-<h1 id="三-、SD卡初始化流程"><a href="#三-、SD卡初始化流程" class="headerlink" title="三 、SD卡初始化流程"></a>三 、SD卡初始化流程</h1><p>       SD卡初始化流程是在core层实现的，集成了SD卡的所有命令，对于驱动开发来说，只需要实现request操作，并对命令和数据中断用mmc_request_done()函数进行上报处理即可。SD卡初始化流程见图2：</p>
-<p><img src="/2018/12/26/Linux%20MMC%20SD%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91/2.png" srcset="/img/loading.gif" lazyload alt=" 图2"></p>
-<h1 id="四、Linux-MMC-x2F-SD驱动热插拔功能"><a href="#四、Linux-MMC-x2F-SD驱动热插拔功能" class="headerlink" title="四、Linux MMC&#x2F;SD驱动热插拔功能"></a>四、Linux MMC&#x2F;SD驱动热插拔功能</h1><p>       对于热插拔功能，MMC&#x2F;SD框架提供了mmc_detect_change()函数对卡插拔时间进行上报，此功能一般MMC&#x2F;SD控制器会提插拔中断功能，驱动软件实现时只需在中断函数中上报即可。</p>
+<h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>       CAN总线设备如果被抽象为网络设备，那也支持像ip这类网络工具，Socket CAN的工具集是Canutils，这些工具还没在arm64的平台上移植过，后面主要介绍上述工具在arm64平台的移植过程。</p>
+<h1 id="1-网络工具ip移植"><a href="#1-网络工具ip移植" class="headerlink" title="1. 网络工具ip移植"></a>1. 网络工具ip移植</h1><p>       在对Linux Socket CAN驱动测试时需要应用软件工具ipiproute中的ip， 下面简要介绍iproute嵌入式移植。</p>
+<p>1.下载源码：<a target="_blank" rel="noopener" href="https://src.fedoraproject.org/repo/pkgs/iproute/">https://src.fedoraproject.org/repo/pkgs/iproute/</a></p>
+<p><a target="_blank" rel="noopener" href="https://src.fedoraproject.org/repo/pkgs/iproute/"></a> 我选择的版本为2.6.39</p>
+<p>2.修改Makefile<br>    1)CC &#x3D; aarch64-linux-gnu-gcc                           修改为交叉编译器<br>    2)SUBDIRS&#x3D;lib ip                                              修改编译目标，只保留这两个</p>
+<p>3）编译</p>
+<p>     make</p>
+<p>4）将&#x2F;ip&#x2F;ip拷贝到嵌入式系统的文件系统中。</p>
+<h1 id="2-canutils嵌入式移植"><a href="#2-canutils嵌入式移植" class="headerlink" title="2. canutils嵌入式移植"></a>2. canutils嵌入式移植</h1><p>       Canutils是基于GNU GPLv2许可的开源代码，包括canconfig、canecho、cansend、candump、cansequence五个工具，用于检测和监控Socket CAN接口。本平台采用arm64处理器，故交叉编译工具采用aarch64-linux-gnu</p>
+<p>1）下载源码：<a target="_blank" rel="noopener" href="http://www.pengutronix.de/software/socket-can/download/canutils">http://www.pengutronix.de/software/socket-can/download/canutils</a> ，下载最新版本canutils 4.0.6；</p>
+<p>2）因为编译canutils需要libsocketcan库支持，下载libsocketcan：<a target="_blank" rel="noopener" href="http://www.pengutronix.de/software/libsocketcan/download/">http://www.pengutronix.de/software/libsocketcan/download/</a>，下载最新版本libsocketcan 0.0.11，因为以前版本不支持交叉编译工具aarch64-linux-gnu,故下载最新版本。</p>
+<p>3）解压libsocketcan-0.0.11.tar.bz2。执行configure命令。（其中–host是指定交叉工具链，–prefix是指定库的生成位置）<br>      .&#x2F;configure --host&#x3D;aarch64-linux-gnu --prefix&#x3D;~&#x2F;workspace&#x2F;can&#x2F;install&#x2F;libsocketcan<br>      执行make；<br>      执行make install，libsocketcan编译完成。</p>
+<p>4）解压canutils-4.0.6.tar.bz2，进入解压目录，因canutils不支持交叉编译工具aarch64-linux-gnu，故需要修改文件。</p>
+<p>       修改configure 文件2604行：ac_ct_CC&#x3D;$ac_cv_prog_ac_ct_CC为ac_ct_CC&#x3D;”aarch64-linux-gnu-gcc”</p>
+<p>       修改&#x2F;config&#x2F;autocof&#x2F;config.sub文件<br>       241行：添加  | aarch64 | aarch64_be \<br>       318行：添加| aarch64-* | aarch64_be-* \</p>
+<p>       执行configure命令。（其中–host是指定交叉工具链，–prefix是指定库的生成位置，libsocketcan_LIBS是指定canconfig需要链接的库，LDFLAGS是指定外部库的路径，CPPFLAGS是指定外部头文件的路径）</p>
+<p>       .&#x2F;configure --host&#x3D;aarch64-linux-gnu --prefix&#x3D;~&#x2F;workspace&#x2F;can&#x2F;install&#x2F;canutils    libsocketcan_LIBS&#x3D;-lsocketcan LDFLAGS&#x3D;-L~&#x2F;workspace&#x2F;can&#x2F;install&#x2F;libsocketcan&#x2F;lib  libsocketcan_CFLAGS&#x3D;-I~&#x2F;workspace&#x2F;can&#x2F;install&#x2F;libsocketcan&#x2F;include CFLAGS&#x3D;-I~&#x2F;workspace&#x2F;can&#x2F;install&#x2F;libsocketcan&#x2F;include<br>       执行make</p>
+<p>       执行make install，&#x2F;workspace&#x2F;can&#x2F;install&#x2F;canutils下生成四个目录，分别拷贝到开发板文件系统的相应目录。</p>
 
               
             </div>
@@ -331,7 +336,7 @@
     <div class="post-meta">
       <i class="iconfont icon-tags"></i>
       
-        <a href="/tags/%E5%AD%98%E5%82%A8%E8%AE%BE%E5%A4%87/">#存储设备</a>
+        <a href="/tags/%E7%BD%91%E7%BB%9C%E8%AE%BE%E5%A4%87/">#网络设备</a>
       
     </div>
   
@@ -343,8 +348,8 @@
 
   <div class="license-box my-3">
     <div class="license-title">
-      <div>Linux MMC/SD驱动开发</div>
-      <div>https://leo-hou.github.io/2018/12/26/Linux MMC SD驱动开发/</div>
+      <div>Linux Socket CAN——工具集嵌入式平台移植</div>
+      <div>https://leo-hou.github.io/2022/06/02/Linux Socket CAN——工具集嵌入式平台移植/</div>
     </div>
     <div class="license-meta">
       
@@ -356,7 +361,7 @@
       
         <div class="license-meta-item license-meta-date">
           <div>发布于</div>
-          <div>2018年12月26日</div>
+          <div>2022年6月2日</div>
         </div>
       
       
@@ -398,18 +403,12 @@
                   <article class="post-prev col-6">
                     
                     
-                      <a href="/2019/10/10/hello-world/" title="Hexo:Hello World">
-                        <i class="iconfont icon-arrowleft"></i>
-                        <span class="hidden-mobile">Hexo:Hello World</span>
-                        <span class="visible-mobile">上一篇</span>
-                      </a>
-                    
                   </article>
                   <article class="post-next col-6">
                     
                     
-                      <a href="/2017/07/25/Linux4.6.0%E4%B8%8B%E7%9A%84%E7%BD%91%E7%BB%9C%E8%AE%BE%E5%A4%87%E9%A9%B1%E5%8A%A8/" title="Linux4.6.0下的网络设备驱动">
-                        <span class="hidden-mobile">Linux4.6.0下的网络设备驱动</span>
+                      <a href="/2022/06/02/Linux%20Socket%20CAN%E2%80%94%E2%80%94%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91/" title="Linux Socket CAN——驱动开发">
+                        <span class="hidden-mobile">Linux Socket CAN——驱动开发</span>
                         <span class="visible-mobile">下一篇</span>
                         <i class="iconfont icon-arrowright"></i>
                       </a>

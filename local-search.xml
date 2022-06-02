@@ -4,6 +4,56 @@
   
   
   <entry>
+    <title>Linux Socket CAN——工具集嵌入式平台移植</title>
+    <link href="/2022/06/02/Linux%20Socket%20CAN%E2%80%94%E2%80%94%E5%B7%A5%E5%85%B7%E9%9B%86%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%B9%B3%E5%8F%B0%E7%A7%BB%E6%A4%8D/"/>
+    <url>/2022/06/02/Linux%20Socket%20CAN%E2%80%94%E2%80%94%E5%B7%A5%E5%85%B7%E9%9B%86%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%B9%B3%E5%8F%B0%E7%A7%BB%E6%A4%8D/</url>
+    
+    <content type="html"><![CDATA[<!--more--><h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>       CAN总线设备如果被抽象为网络设备，那也支持像ip这类网络工具，Socket CAN的工具集是Canutils，这些工具还没在arm64的平台上移植过，后面主要介绍上述工具在arm64平台的移植过程。</p><h1 id="1-网络工具ip移植"><a href="#1-网络工具ip移植" class="headerlink" title="1. 网络工具ip移植"></a>1. 网络工具ip移植</h1><p>       在对Linux Socket CAN驱动测试时需要应用软件工具ipiproute中的ip， 下面简要介绍iproute嵌入式移植。</p><p>1.下载源码：<a href="https://src.fedoraproject.org/repo/pkgs/iproute/">https://src.fedoraproject.org/repo/pkgs/iproute/</a></p><p><a href="https://src.fedoraproject.org/repo/pkgs/iproute/"></a> 我选择的版本为2.6.39</p><p>2.修改Makefile<br>    1)CC &#x3D; aarch64-linux-gnu-gcc                           修改为交叉编译器<br>    2)SUBDIRS&#x3D;lib ip                                              修改编译目标，只保留这两个</p><p>3）编译</p><p>     make</p><p>4）将&#x2F;ip&#x2F;ip拷贝到嵌入式系统的文件系统中。</p><h1 id="2-canutils嵌入式移植"><a href="#2-canutils嵌入式移植" class="headerlink" title="2. canutils嵌入式移植"></a>2. canutils嵌入式移植</h1><p>       Canutils是基于GNU GPLv2许可的开源代码，包括canconfig、canecho、cansend、candump、cansequence五个工具，用于检测和监控Socket CAN接口。本平台采用arm64处理器，故交叉编译工具采用aarch64-linux-gnu</p><p>1）下载源码：<a href="http://www.pengutronix.de/software/socket-can/download/canutils">http://www.pengutronix.de/software/socket-can/download/canutils</a> ，下载最新版本canutils 4.0.6；</p><p>2）因为编译canutils需要libsocketcan库支持，下载libsocketcan：<a href="http://www.pengutronix.de/software/libsocketcan/download/">http://www.pengutronix.de/software/libsocketcan/download/</a>，下载最新版本libsocketcan 0.0.11，因为以前版本不支持交叉编译工具aarch64-linux-gnu,故下载最新版本。</p><p>3）解压libsocketcan-0.0.11.tar.bz2。执行configure命令。（其中–host是指定交叉工具链，–prefix是指定库的生成位置）<br>      .&#x2F;configure --host&#x3D;aarch64-linux-gnu --prefix&#x3D;~&#x2F;workspace&#x2F;can&#x2F;install&#x2F;libsocketcan<br>      执行make；<br>      执行make install，libsocketcan编译完成。</p><p>4）解压canutils-4.0.6.tar.bz2，进入解压目录，因canutils不支持交叉编译工具aarch64-linux-gnu，故需要修改文件。</p><p>       修改configure 文件2604行：ac_ct_CC&#x3D;$ac_cv_prog_ac_ct_CC为ac_ct_CC&#x3D;”aarch64-linux-gnu-gcc”</p><p>       修改&#x2F;config&#x2F;autocof&#x2F;config.sub文件<br>       241行：添加  | aarch64 | aarch64_be \<br>       318行：添加| aarch64-* | aarch64_be-* \</p><p>       执行configure命令。（其中–host是指定交叉工具链，–prefix是指定库的生成位置，libsocketcan_LIBS是指定canconfig需要链接的库，LDFLAGS是指定外部库的路径，CPPFLAGS是指定外部头文件的路径）</p><p>       .&#x2F;configure --host&#x3D;aarch64-linux-gnu --prefix&#x3D;~&#x2F;workspace&#x2F;can&#x2F;install&#x2F;canutils    libsocketcan_LIBS&#x3D;-lsocketcan LDFLAGS&#x3D;-L~&#x2F;workspace&#x2F;can&#x2F;install&#x2F;libsocketcan&#x2F;lib  libsocketcan_CFLAGS&#x3D;-I~&#x2F;workspace&#x2F;can&#x2F;install&#x2F;libsocketcan&#x2F;include CFLAGS&#x3D;-I~&#x2F;workspace&#x2F;can&#x2F;install&#x2F;libsocketcan&#x2F;include<br>       执行make</p><p>       执行make install，&#x2F;workspace&#x2F;can&#x2F;install&#x2F;canutils下生成四个目录，分别拷贝到开发板文件系统的相应目录。</p>]]></content>
+    
+    
+    <categories>
+      
+      <category>Linux Driver</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>网络设备</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>Linux Socket CAN——驱动开发</title>
+    <link href="/2022/06/02/Linux%20Socket%20CAN%E2%80%94%E2%80%94%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91/"/>
+    <url>/2022/06/02/Linux%20Socket%20CAN%E2%80%94%E2%80%94%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91/</url>
+    
+    <content type="html"><![CDATA[<!--more--><h1 id="1-CAN总线协议"><a href="#1-CAN总线协议" class="headerlink" title="1. CAN总线协议"></a>1. CAN总线协议</h1><p>       CAN是Controller Area Network(控制器局域网)的缩写。CAN通信协议在1986年由德国电气商博世公司所开发，主要面向汽车的通信系统。现已是ISO国际标准化的串行通信协议。根据不同的距离、不同的网络，可配置不同的速度，最高速度为1MBit&#x2F;s。</p><p>CAN被细分为三个层次：</p><p>(1)CAN对象层(the object layer);</p><p>(2)CAN传输层(the transfer layer);</p><p>(3)CAN物理层(the physical layer);</p><p>CAN协议所对应的ISO模型见图1.1：</p><p><img src="/2022/06/02/Linux%20Socket%20CAN%E2%80%94%E2%80%94%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91/1.1.png" alt="图1.1"></p><p>       对象层和传输层包括所有由ISO&#x2F;OSI模型定义的数据链路层的服务和功能。</p><h2 id="1-1-对象层的作用范围包括："><a href="#1-1-对象层的作用范围包括：" class="headerlink" title="1.1 对象层的作用范围包括："></a>1.1 对象层的作用范围包括：</h2><p>(1)查找被发送的报文。</p><p>(2)确定由实际要使用的传输层接收哪一个报文。</p><p>(3)为应用层相关硬件提供接口。</p><h2 id="1-2-传输层的作用主要："><a href="#1-2-传输层的作用主要：" class="headerlink" title="1.2 传输层的作用主要："></a>1.2 传输层的作用主要：</h2><p>(1)传送规则，也就是控制帧结构、执行仲裁、错误检测、出错标定、故障界定。</p><p>(2)总线上什么时候开始发送新报文及什么时候开始接收报文均在传输层里确定。</p><p>(3)位定时的一些普通功能也可以看作是传输层的一部分。</p><p>(4)传输层的修改是受到限制的。</p><h2 id="1-3-物理层的作用："><a href="#1-3-物理层的作用：" class="headerlink" title="1.3 物理层的作用："></a>1.3 物理层的作用：</h2><p>       在不同节点之间根据所有的电气属性进行位信息的实际传输。当然，同一网络内，物理层对于所有的节点必须是相同的。尽管如此，在选择物理层方面还是很自由的。</p><h1 id="2-Linux下Socket-CAN驱动模型"><a href="#2-Linux下Socket-CAN驱动模型" class="headerlink" title="2. Linux下Socket CAN驱动模型"></a>2. Linux下Socket CAN驱动模型</h1><p>       Linux下Socket CAN驱动属于网络设备的一部分。Linux下Socket CAN分层模型见图2.1：</p><p><img src="/2022/06/02/Linux%20Socket%20CAN%E2%80%94%E2%80%94%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91/2.1.png" alt="图2.1"></p><p>                                                                              </p><p>Linux下Socket CAN的驱动模型见图2.2：</p><p><img src="/2022/06/02/Linux%20Socket%20CAN%E2%80%94%E2%80%94%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91/2.2.png" alt="图2.2"></p><h1 id="3-Socket-CAN驱动框架的重要数据结构"><a href="#3-Socket-CAN驱动框架的重要数据结构" class="headerlink" title="3. Socket CAN驱动框架的重要数据结构"></a>3. Socket CAN驱动框架的重要数据结构</h1><h2 id="3-1-struct-net-device-ops结构体"><a href="#3-1-struct-net-device-ops结构体" class="headerlink" title="3.1 struct net_device_ops结构体"></a>3.1 struct net_device_ops结构体</h2><p><img src="/2022/06/02/Linux%20Socket%20CAN%E2%80%94%E2%80%94%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91/3.1.png">   </p><p>       struct net_device_ops定义了网络设备的操作方法，.ndo_open开启网络设备的操作，.ndo_stop停止网络设备，.ndo_start_xmit发送网络数据，.ndo_change_mtu网络设备一次最大传输单元。</p><p> </p><h2 id="3-2-struct-can-frame-结构体"><a href="#3-2-struct-can-frame-结构体" class="headerlink" title="3.2 struct can_frame 结构体"></a>3.2 struct can_frame 结构体</h2><p><img src="/2022/06/02/Linux%20Socket%20CAN%E2%80%94%E2%80%94%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91/3.2.png"></p><p>       其中can_id表示can frame的id，can_dlc表示can frame数据的长度，data[CAN_MAX_DLEN]表示携带的数据。</p><h2 id="3-3-struct-platform-driver-结构体"><a href="#3-3-struct-platform-driver-结构体" class="headerlink" title="3.3 struct platform_driver 结构体"></a>3.3 struct platform_driver 结构体</h2><p><img src="/2022/06/02/Linux%20Socket%20CAN%E2%80%94%E2%80%94%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91/3.3.png"></p><p>       其中probe是驱动初始化函数入口，初始化本地结构体，remove是驱动卸载函数入口。</p><h1 id="4-Linux下NAPI机制"><a href="#4-Linux下NAPI机制" class="headerlink" title="4. Linux下NAPI机制"></a>4. Linux下NAPI机制</h1><p>       linux下网络数据接收机制NAPI：混合使用中断与轮询，而不使用纯粹的中断事件驱动模型。这样就提高了系统的性能，当设备产生一个数据接收中断后，新机制的软中断处理函数就会轮询设备的入口队列，直到入口队列中没有数据了，再开启中断。</p><p>NAPI数据接收的流程为：<br>    a、接收中断来临<br>    b、关闭接收中断<br>    c、以轮询方式接收所有数据包直到收空<br>    d、开启接收中断</p><p>NAPI驱动程序各部分的调用关系见图4.1：</p><p><img src="/2022/06/02/Linux%20Socket%20CAN%E2%80%94%E2%80%94%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91/4.1.png" alt=" 图4.1"></p><h1 id="5-数据发送接收流程"><a href="#5-数据发送接收流程" class="headerlink" title="5. 数据发送接收流程"></a>5. 数据发送接收流程</h1><p>       Linux下Socket CAN在用户空间提供socket接口，在内核空间实现CAN Frame协议，并协同CAN控制器驱动控制CAN控制器的驱动，实现CAN通信。</p><h2 id="5-1-发送流程"><a href="#5-1-发送流程" class="headerlink" title="5.1 发送流程"></a>5.1 发送流程</h2><p><img src="/2022/06/02/Linux%20Socket%20CAN%E2%80%94%E2%80%94%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91/5.1.png"></p><h2 id="5-2-接收流程"><a href="#5-2-接收流程" class="headerlink" title="5.2 接收流程"></a>5.2 接收流程</h2><p><img src="/2022/06/02/Linux%20Socket%20CAN%E2%80%94%E2%80%94%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91/5.2.png"></p><p>                                               </p>]]></content>
+    
+    
+    <categories>
+      
+      <category>Linux Driver</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>网络设备</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
     <title>机械按键扫描——数字逻辑有限状态机思想在软件中的实现</title>
     <link href="/2022/05/29/%E6%9C%BA%E6%A2%B0%E6%8C%89%E9%94%AE%E6%89%AB%E6%8F%8F%E2%80%94%E2%80%94%E6%95%B0%E5%AD%97%E9%80%BB%E8%BE%91%E6%9C%89%E9%99%90%E7%8A%B6%E6%80%81%E6%9C%BA%E6%80%9D%E6%83%B3%E5%9C%A8%E8%BD%AF%E4%BB%B6%E4%B8%AD%E7%9A%84%E5%AE%9E%E7%8E%B0/"/>
     <url>/2022/05/29/%E6%9C%BA%E6%A2%B0%E6%8C%89%E9%94%AE%E6%89%AB%E6%8F%8F%E2%80%94%E2%80%94%E6%95%B0%E5%AD%97%E9%80%BB%E8%BE%91%E6%9C%89%E9%99%90%E7%8A%B6%E6%80%81%E6%9C%BA%E6%80%9D%E6%83%B3%E5%9C%A8%E8%BD%AF%E4%BB%B6%E4%B8%AD%E7%9A%84%E5%AE%9E%E7%8E%B0/</url>

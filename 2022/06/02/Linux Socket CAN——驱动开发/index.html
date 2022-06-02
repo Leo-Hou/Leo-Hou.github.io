@@ -16,26 +16,26 @@
   <meta name="author" content="Leo Hou">
   <meta name="keywords" content="">
   
-    <meta name="description" content="Linux下MMC&#x2F;SD驱动主要分三层：card层、core层、host层">
+    <meta name="description" content="CAN是Controller Area Network\(控制器局域网\)的缩写。CAN通信协议在1986年由德国电气商博世公司所开发，主要面向汽车的通信系统">
 <meta property="og:type" content="article">
-<meta property="og:title" content="Linux MMC&#x2F;SD驱动开发">
-<meta property="og:url" content="https://leo-hou.github.io/2018/12/26/Linux%20MMC%20SD%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91/index.html">
+<meta property="og:title" content="Linux Socket CAN——驱动开发">
+<meta property="og:url" content="https://leo-hou.github.io/2022/06/02/Linux%20Socket%20CAN%E2%80%94%E2%80%94%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91/index.html">
 <meta property="og:site_name" content="Leo Hou">
-<meta property="og:description" content="Linux下MMC&#x2F;SD驱动主要分三层：card层、core层、host层">
+<meta property="og:description" content="CAN是Controller Area Network\(控制器局域网\)的缩写。CAN通信协议在1986年由德国电气商博世公司所开发，主要面向汽车的通信系统">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="https://leo-hou.github.io/img/post/mmc%20sd/mmc%20sd.jpeg">
-<meta property="article:published_time" content="2018-12-26T08:15:52.000Z">
-<meta property="article:modified_time" content="2022-06-02T00:53:12.588Z">
+<meta property="og:image" content="https://leo-hou.github.io/img/post/can%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91/can.png">
+<meta property="article:published_time" content="2022-06-02T04:14:44.000Z">
+<meta property="article:modified_time" content="2022-06-02T02:03:34.019Z">
 <meta property="article:author" content="Leo Hou">
-<meta property="article:tag" content="存储设备">
+<meta property="article:tag" content="网络设备">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="https://leo-hou.github.io/img/post/mmc%20sd/mmc%20sd.jpeg">
+<meta name="twitter:image" content="https://leo-hou.github.io/img/post/can%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91/can.png">
   
   
     <meta name="referrer" content="no-referrer-when-downgrade">
   
   
-  <title>Linux MMC/SD驱动开发 - Leo Hou</title>
+  <title>Linux Socket CAN——驱动开发 - Leo Hou</title>
 
   <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
 
@@ -198,7 +198,7 @@
       <div class="banner-text text-center fade-in-up">
         <div class="h2">
           
-            <span id="subtitle" data-typed-text="Linux MMC/SD驱动开发"></span>
+            <span id="subtitle" data-typed-text="Linux Socket CAN——驱动开发"></span>
           
         </div>
 
@@ -209,8 +209,8 @@
     
       <span class="post-meta">
         <i class="iconfont icon-date-fill" aria-hidden="true"></i>
-        <time datetime="2018-12-26 16:15" pubdate>
-          2018年12月26日 下午
+        <time datetime="2022-06-02 12:14" pubdate>
+          2022年6月2日 中午
         </time>
       </span>
     
@@ -222,7 +222,7 @@
         <i class="iconfont icon-chart"></i>
         
           <!-- compatible with older versions-->
-          734 字
+          1.3k 字
         
       </span>
     
@@ -234,7 +234,7 @@
         
         
           <!-- compatible with older versions-->
-          7 分钟
+          11 分钟
         
       </span>
     
@@ -280,25 +280,48 @@
         <div id="board">
           <article class="post-content mx-auto">
             <!-- SEO header -->
-            <h1 style="display: none">Linux MMC/SD驱动开发</h1>
+            <h1 style="display: none">Linux Socket CAN——驱动开发</h1>
             
             <div class="markdown-body">
               
               <!--more-->
 
-<h1 id="一-、Linux-MMC-x2F-SD驱动模型分析"><a href="#一-、Linux-MMC-x2F-SD驱动模型分析" class="headerlink" title="一 、Linux MMC&#x2F;SD驱动模型分析"></a>一 、Linux MMC&#x2F;SD驱动模型分析</h1><p>        Linux下MMC&#x2F;SD驱动主要分三层：card层、core层、host层。Linux下MMC&#x2F;SD驱动框架见图1：</p>
-<p><img src="/2018/12/26/Linux%20MMC%20SD%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91/1.png" srcset="/img/loading.gif" lazyload alt=" 图1"></p>
-<p><strong>card层：</strong><br>要把操作的数据以块设备的处理方式写到记忆体上或从记忆体上读取。</p>
-<p><strong>core层：</strong><br>则是将数据以何种格式，何种方式在 MMC&#x2F;SD主机控制器与MMC&#x2F;SD卡的记忆体(即块设备)之间进行传递，这种格式、方式被称之为规范或协议。 </p>
-<p><strong>host层：</strong><br>就是要实现的具体MMC&#x2F;SD相应控制器的驱动程序，包括MMC&#x2F;SD控制器的初始化、寄存器读写及SD卡的命令、数据的传输接口。</p>
-<p>       当前新版内核已将card层和core层合并。</p>
-<h1 id="二-、Linux-MMC-x2F-SD驱动框架的重要数据结构"><a href="#二-、Linux-MMC-x2F-SD驱动框架的重要数据结构" class="headerlink" title="二 、Linux MMC&#x2F;SD驱动框架的重要数据结构"></a>二 、Linux MMC&#x2F;SD驱动框架的重要数据结构</h1><h2 id="2-1-struct-mmc-host-结构体"><a href="#2-1-struct-mmc-host-结构体" class="headerlink" title="2.1 struct mmc_host 结构体"></a>2.1 struct mmc_host 结构体</h2><p><img src="/2018/12/26/Linux%20MMC%20SD%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91/2.1.png" srcset="/img/loading.gif" lazyload></p>
-<p>struct mmc_host用于与core层的命令请求，数据 传输等信息。</p>
-<h2 id="2-2-struct-mmc-host-ops-结构体"><a href="#2-2-struct-mmc-host-ops-结构体" class="headerlink" title="2.2 struct mmc_host_ops 结构体"></a>2.2 struct mmc_host_ops 结构体</h2><p><img src="/2018/12/26/Linux%20MMC%20SD%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91/2.2.png" srcset="/img/loading.gif" lazyload></p>
-<p>       其中request 主要是SD卡命令数据传输操作入口，set_ios是配置SD控制器寄存器操作入口，是驱动中必须要实现的两个基本操作。</p>
-<h1 id="三-、SD卡初始化流程"><a href="#三-、SD卡初始化流程" class="headerlink" title="三 、SD卡初始化流程"></a>三 、SD卡初始化流程</h1><p>       SD卡初始化流程是在core层实现的，集成了SD卡的所有命令，对于驱动开发来说，只需要实现request操作，并对命令和数据中断用mmc_request_done()函数进行上报处理即可。SD卡初始化流程见图2：</p>
-<p><img src="/2018/12/26/Linux%20MMC%20SD%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91/2.png" srcset="/img/loading.gif" lazyload alt=" 图2"></p>
-<h1 id="四、Linux-MMC-x2F-SD驱动热插拔功能"><a href="#四、Linux-MMC-x2F-SD驱动热插拔功能" class="headerlink" title="四、Linux MMC&#x2F;SD驱动热插拔功能"></a>四、Linux MMC&#x2F;SD驱动热插拔功能</h1><p>       对于热插拔功能，MMC&#x2F;SD框架提供了mmc_detect_change()函数对卡插拔时间进行上报，此功能一般MMC&#x2F;SD控制器会提插拔中断功能，驱动软件实现时只需在中断函数中上报即可。</p>
+<h1 id="1-CAN总线协议"><a href="#1-CAN总线协议" class="headerlink" title="1. CAN总线协议"></a>1. CAN总线协议</h1><p>       CAN是Controller Area Network(控制器局域网)的缩写。CAN通信协议在1986年由德国电气商博世公司所开发，主要面向汽车的通信系统。现已是ISO国际标准化的串行通信协议。根据不同的距离、不同的网络，可配置不同的速度，最高速度为1MBit&#x2F;s。</p>
+<p>CAN被细分为三个层次：</p>
+<p>(1)CAN对象层(the object layer);</p>
+<p>(2)CAN传输层(the transfer layer);</p>
+<p>(3)CAN物理层(the physical layer);</p>
+<p>CAN协议所对应的ISO模型见图1.1：</p>
+<p><img src="/2022/06/02/Linux%20Socket%20CAN%E2%80%94%E2%80%94%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91/1.1.png" srcset="/img/loading.gif" lazyload alt="图1.1"></p>
+<p>       对象层和传输层包括所有由ISO&#x2F;OSI模型定义的数据链路层的服务和功能。</p>
+<h2 id="1-1-对象层的作用范围包括："><a href="#1-1-对象层的作用范围包括：" class="headerlink" title="1.1 对象层的作用范围包括："></a>1.1 对象层的作用范围包括：</h2><p>(1)查找被发送的报文。</p>
+<p>(2)确定由实际要使用的传输层接收哪一个报文。</p>
+<p>(3)为应用层相关硬件提供接口。</p>
+<h2 id="1-2-传输层的作用主要："><a href="#1-2-传输层的作用主要：" class="headerlink" title="1.2 传输层的作用主要："></a>1.2 传输层的作用主要：</h2><p>(1)传送规则，也就是控制帧结构、执行仲裁、错误检测、出错标定、故障界定。</p>
+<p>(2)总线上什么时候开始发送新报文及什么时候开始接收报文均在传输层里确定。</p>
+<p>(3)位定时的一些普通功能也可以看作是传输层的一部分。</p>
+<p>(4)传输层的修改是受到限制的。</p>
+<h2 id="1-3-物理层的作用："><a href="#1-3-物理层的作用：" class="headerlink" title="1.3 物理层的作用："></a>1.3 物理层的作用：</h2><p>       在不同节点之间根据所有的电气属性进行位信息的实际传输。当然，同一网络内，物理层对于所有的节点必须是相同的。尽管如此，在选择物理层方面还是很自由的。</p>
+<h1 id="2-Linux下Socket-CAN驱动模型"><a href="#2-Linux下Socket-CAN驱动模型" class="headerlink" title="2. Linux下Socket CAN驱动模型"></a>2. Linux下Socket CAN驱动模型</h1><p>       Linux下Socket CAN驱动属于网络设备的一部分。Linux下Socket CAN分层模型见图2.1：</p>
+<p><img src="/2022/06/02/Linux%20Socket%20CAN%E2%80%94%E2%80%94%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91/2.1.png" srcset="/img/loading.gif" lazyload alt="图2.1"></p>
+<p>                                                                              </p>
+<p>Linux下Socket CAN的驱动模型见图2.2：</p>
+<p><img src="/2022/06/02/Linux%20Socket%20CAN%E2%80%94%E2%80%94%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91/2.2.png" srcset="/img/loading.gif" lazyload alt="图2.2"></p>
+<h1 id="3-Socket-CAN驱动框架的重要数据结构"><a href="#3-Socket-CAN驱动框架的重要数据结构" class="headerlink" title="3. Socket CAN驱动框架的重要数据结构"></a>3. Socket CAN驱动框架的重要数据结构</h1><h2 id="3-1-struct-net-device-ops结构体"><a href="#3-1-struct-net-device-ops结构体" class="headerlink" title="3.1 struct net_device_ops结构体"></a>3.1 struct net_device_ops结构体</h2><p><img src="/2022/06/02/Linux%20Socket%20CAN%E2%80%94%E2%80%94%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91/3.1.png" srcset="/img/loading.gif" lazyload>   </p>
+<p>       struct net_device_ops定义了网络设备的操作方法，.ndo_open开启网络设备的操作，.ndo_stop停止网络设备，.ndo_start_xmit发送网络数据，.ndo_change_mtu网络设备一次最大传输单元。</p>
+<p> </p>
+<h2 id="3-2-struct-can-frame-结构体"><a href="#3-2-struct-can-frame-结构体" class="headerlink" title="3.2 struct can_frame 结构体"></a>3.2 struct can_frame 结构体</h2><p><img src="/2022/06/02/Linux%20Socket%20CAN%E2%80%94%E2%80%94%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91/3.2.png" srcset="/img/loading.gif" lazyload></p>
+<p>       其中can_id表示can frame的id，can_dlc表示can frame数据的长度，data[CAN_MAX_DLEN]表示携带的数据。</p>
+<h2 id="3-3-struct-platform-driver-结构体"><a href="#3-3-struct-platform-driver-结构体" class="headerlink" title="3.3 struct platform_driver 结构体"></a>3.3 struct platform_driver 结构体</h2><p><img src="/2022/06/02/Linux%20Socket%20CAN%E2%80%94%E2%80%94%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91/3.3.png" srcset="/img/loading.gif" lazyload></p>
+<p>       其中probe是驱动初始化函数入口，初始化本地结构体，remove是驱动卸载函数入口。</p>
+<h1 id="4-Linux下NAPI机制"><a href="#4-Linux下NAPI机制" class="headerlink" title="4. Linux下NAPI机制"></a>4. Linux下NAPI机制</h1><p>       linux下网络数据接收机制NAPI：混合使用中断与轮询，而不使用纯粹的中断事件驱动模型。这样就提高了系统的性能，当设备产生一个数据接收中断后，新机制的软中断处理函数就会轮询设备的入口队列，直到入口队列中没有数据了，再开启中断。</p>
+<p>NAPI数据接收的流程为：<br>    a、接收中断来临<br>    b、关闭接收中断<br>    c、以轮询方式接收所有数据包直到收空<br>    d、开启接收中断</p>
+<p>NAPI驱动程序各部分的调用关系见图4.1：</p>
+<p><img src="/2022/06/02/Linux%20Socket%20CAN%E2%80%94%E2%80%94%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91/4.1.png" srcset="/img/loading.gif" lazyload alt=" 图4.1"></p>
+<h1 id="5-数据发送接收流程"><a href="#5-数据发送接收流程" class="headerlink" title="5. 数据发送接收流程"></a>5. 数据发送接收流程</h1><p>       Linux下Socket CAN在用户空间提供socket接口，在内核空间实现CAN Frame协议，并协同CAN控制器驱动控制CAN控制器的驱动，实现CAN通信。</p>
+<h2 id="5-1-发送流程"><a href="#5-1-发送流程" class="headerlink" title="5.1 发送流程"></a>5.1 发送流程</h2><p><img src="/2022/06/02/Linux%20Socket%20CAN%E2%80%94%E2%80%94%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91/5.1.png" srcset="/img/loading.gif" lazyload></p>
+<h2 id="5-2-接收流程"><a href="#5-2-接收流程" class="headerlink" title="5.2 接收流程"></a>5.2 接收流程</h2><p><img src="/2022/06/02/Linux%20Socket%20CAN%E2%80%94%E2%80%94%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91/5.2.png" srcset="/img/loading.gif" lazyload></p>
+<p>                                               </p>
 
               
             </div>
@@ -331,7 +354,7 @@
     <div class="post-meta">
       <i class="iconfont icon-tags"></i>
       
-        <a href="/tags/%E5%AD%98%E5%82%A8%E8%AE%BE%E5%A4%87/">#存储设备</a>
+        <a href="/tags/%E7%BD%91%E7%BB%9C%E8%AE%BE%E5%A4%87/">#网络设备</a>
       
     </div>
   
@@ -343,8 +366,8 @@
 
   <div class="license-box my-3">
     <div class="license-title">
-      <div>Linux MMC/SD驱动开发</div>
-      <div>https://leo-hou.github.io/2018/12/26/Linux MMC SD驱动开发/</div>
+      <div>Linux Socket CAN——驱动开发</div>
+      <div>https://leo-hou.github.io/2022/06/02/Linux Socket CAN——驱动开发/</div>
     </div>
     <div class="license-meta">
       
@@ -356,7 +379,7 @@
       
         <div class="license-meta-item license-meta-date">
           <div>发布于</div>
-          <div>2018年12月26日</div>
+          <div>2022年6月2日</div>
         </div>
       
       
@@ -398,9 +421,9 @@
                   <article class="post-prev col-6">
                     
                     
-                      <a href="/2019/10/10/hello-world/" title="Hexo:Hello World">
+                      <a href="/2022/06/02/Linux%20Socket%20CAN%E2%80%94%E2%80%94%E5%B7%A5%E5%85%B7%E9%9B%86%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%B9%B3%E5%8F%B0%E7%A7%BB%E6%A4%8D/" title="Linux Socket CAN——工具集嵌入式平台移植">
                         <i class="iconfont icon-arrowleft"></i>
-                        <span class="hidden-mobile">Hexo:Hello World</span>
+                        <span class="hidden-mobile">Linux Socket CAN——工具集嵌入式平台移植</span>
                         <span class="visible-mobile">上一篇</span>
                       </a>
                     
@@ -408,8 +431,8 @@
                   <article class="post-next col-6">
                     
                     
-                      <a href="/2017/07/25/Linux4.6.0%E4%B8%8B%E7%9A%84%E7%BD%91%E7%BB%9C%E8%AE%BE%E5%A4%87%E9%A9%B1%E5%8A%A8/" title="Linux4.6.0下的网络设备驱动">
-                        <span class="hidden-mobile">Linux4.6.0下的网络设备驱动</span>
+                      <a href="/2022/05/29/%E6%9C%BA%E6%A2%B0%E6%8C%89%E9%94%AE%E6%89%AB%E6%8F%8F%E2%80%94%E2%80%94%E6%95%B0%E5%AD%97%E9%80%BB%E8%BE%91%E6%9C%89%E9%99%90%E7%8A%B6%E6%80%81%E6%9C%BA%E6%80%9D%E6%83%B3%E5%9C%A8%E8%BD%AF%E4%BB%B6%E4%B8%AD%E7%9A%84%E5%AE%9E%E7%8E%B0/" title="机械按键扫描——数字逻辑有限状态机思想在软件中的实现">
+                        <span class="hidden-mobile">机械按键扫描——数字逻辑有限状态机思想在软件中的实现</span>
                         <span class="visible-mobile">下一篇</span>
                         <i class="iconfont icon-arrowright"></i>
                       </a>
